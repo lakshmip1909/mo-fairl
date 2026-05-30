@@ -1,0 +1,33 @@
+#!/bin/bash
+#PBS -N mo_fairl_train
+#PBS -l walltime=04:00:00
+#PBS -l ncpus=4
+#PBS -l mem=16gb
+#PBS -l ngpus=1
+#PBS -j oe
+#PBS -o logs/train.log
+
+# ── Setup ──────────────────────────────────────────────────────────────────────
+set -e
+cd "$PBS_O_WORKDIR"
+
+echo "=========================================="
+echo "  MO-FAIRL: Training"
+echo "  Job ID   : $PBS_JOBID"
+echo "  Start    : $(date)"
+echo "=========================================="
+
+module load python/3.11 2>/dev/null || true
+module load cuda/12.1   2>/dev/null || true
+
+source venv/bin/activate
+
+mkdir -p logs outputs/checkpoints outputs/metrics outputs/plots
+
+# ── Train ──────────────────────────────────────────────────────────────────────
+python main.py --config configs/default.yaml --mode train
+
+echo ""
+echo "=========================================="
+echo "  Training complete: $(date)"
+echo "=========================================="

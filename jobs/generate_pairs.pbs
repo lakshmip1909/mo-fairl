@@ -1,0 +1,47 @@
+#!/bin/bash
+#PBS -N mo_fairl_generate
+#PBS -l walltime=01:00:00
+#PBS -l ncpus=4
+#PBS -l mem=8gb
+#PBS -j oe
+#PBS -o logs/generate.log
+
+# ── Setup ──────────────────────────────────────────────────────────────────────
+set -e
+cd "$PBS_O_WORKDIR"
+
+echo "=========================================="
+echo "  MO-FAIRL: Data Generation"
+echo "  Job ID   : $PBS_JOBID"
+echo "  Start    : $(date)"
+echo "=========================================="
+
+# Load modules (adjust for your HPC)
+module load python/3.11 2>/dev/null || true
+
+# Activate virtual environment
+source venv/bin/activate
+
+mkdir -p logs data
+
+# ── Generate ───────────────────────────────────────────────────────────────────
+echo ""
+echo "Generating toxicity pairs..."
+python scripts/generate_toxicity.py
+
+echo ""
+echo "Generating math pairs..."
+python scripts/generate_math.py
+
+echo ""
+echo "Generating code pairs..."
+python scripts/generate_code.py
+
+echo ""
+echo "Combining datasets..."
+python scripts/combine_data.py
+
+echo ""
+echo "=========================================="
+echo "  Data generation complete: $(date)"
+echo "=========================================="

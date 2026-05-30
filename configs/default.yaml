@@ -1,0 +1,57 @@
+# MO-FAIRL Default Configuration
+
+# ── Data ──────────────────────────────────────────────────────────────────────
+data:
+  toxicity_path: data/toxicity_pairs.jsonl
+  math_path:     data/math_pairs.jsonl
+  code_path:     data/code_pairs.jsonl
+  combined_path: data/combined_pairs.jsonl
+  train_split:   0.8
+  val_split:     0.1
+  test_split:    0.1
+  seed:          42
+
+# ── Model ─────────────────────────────────────────────────────────────────────
+model:
+  encoder:       sentence-transformers/all-MiniLM-L6-v2
+  hidden_dim:    256
+  dropout:       0.1
+  num_objectives: 3                  # toxicity, math, code
+  objective_names: [toxicity, math, code]
+
+# ── Training ──────────────────────────────────────────────────────────────────
+training:
+  batch_size:    32
+  num_epochs:    20
+  learning_rate: 2.0e-4
+  weight_decay:  1.0e-4
+  warmup_steps:  100
+  grad_clip:     1.0
+  checkpoint_dir: outputs/checkpoints
+  save_every:    5                   # save checkpoint every N epochs
+  device:        cuda                # cuda or cpu
+
+# ── Reward combination weights (baseline: uniform) ────────────────────────────
+reward_weights:
+  toxicity: 0.333
+  math:     0.333
+  code:     0.334
+
+# ── Evaluation ────────────────────────────────────────────────────────────────
+evaluation:
+  metrics_dir:      outputs/metrics
+  plots_dir:        outputs/plots
+  uncertainty_eps:  0.1             # |Δ| < eps → uncertain prediction
+
+# ── Failure analysis ──────────────────────────────────────────────────────────
+failure_analysis:
+  output_dir:    outputs/failure_examples
+  epsilon:       0.1               # reward gap threshold for uncertainty
+
+# ── PBS / HPC ─────────────────────────────────────────────────────────────────
+hpc:
+  walltime:      04:00:00
+  ncpus:         4
+  mem:           16gb
+  gpu:           1
+  queue:         gpu

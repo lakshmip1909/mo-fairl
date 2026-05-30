@@ -1,0 +1,31 @@
+#!/bin/bash
+#PBS -N mo_fairl_failure
+#PBS -l walltime=01:00:00
+#PBS -l ncpus=4
+#PBS -l mem=8gb
+#PBS -l ngpus=1
+#PBS -j oe
+#PBS -o logs/failure_analysis.log
+
+set -e
+cd "$PBS_O_WORKDIR"
+
+echo "=========================================="
+echo "  MO-FAIRL: Failure Analysis"
+echo "  Job ID   : $PBS_JOBID"
+echo "  Start    : $(date)"
+echo "=========================================="
+
+module load python/3.11 2>/dev/null || true
+module load cuda/12.1   2>/dev/null || true
+
+source venv/bin/activate
+
+mkdir -p logs outputs/failure_examples
+
+python main.py --config configs/default.yaml --mode analyze
+
+echo ""
+echo "=========================================="
+echo "  Failure analysis complete: $(date)"
+echo "=========================================="
