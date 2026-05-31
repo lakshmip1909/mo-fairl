@@ -26,6 +26,6 @@ echo "  Job ID: $PBS_JOBID"
 echo "  Start : $(date)"
 echo "=========================================="
 
-python src/evaluate.py --config configs/default.yaml
+python main.py --config configs/default.yaml --mode evaluate --checkpoint outputs/checkpoints/best_model.pt
 
 echo "Evaluation complete: $(date)"

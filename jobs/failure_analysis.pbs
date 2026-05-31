@@ -26,6 +26,6 @@ echo "  Job ID: $PBS_JOBID"
 echo "  Start : $(date)"
 echo "=========================================="
 
-python src/failure_analysis.py --config configs/default.yaml
+python main.py --config configs/default.yaml --mode analyze --checkpoint outputs/checkpoints/best_model.pt
 
 echo "Failure analysis complete: $(date)"
