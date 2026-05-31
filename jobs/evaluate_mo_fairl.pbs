@@ -2,7 +2,7 @@
 #PBS -N mo_fairl_eval
 #PBS -l walltime=01:00:00
 #PBS -l ncpus=4
-#PBS -l mem=8gb
+#PBS -l mem=16gb
 #PBS -l ngpus=1
 #PBS -j oe
 #PBS -o logs/evaluate.log
@@ -10,22 +10,22 @@
 set -e
 cd "$PBS_O_WORKDIR"
 
-echo "=========================================="
-echo "  MO-FAIRL: Evaluation"
-echo "  Job ID   : $PBS_JOBID"
-echo "  Start    : $(date)"
-echo "=========================================="
-
-module load python/3.11 2>/dev/null || true
-module load cuda/12.1   2>/dev/null || true
-
-source venv/bin/activate
-
 mkdir -p logs outputs/metrics outputs/plots
 
-python main.py --config configs/default.yaml --mode evaluate
+module load anaconda3/personal 2>/dev/null || true
+module load cuda/12.1 2>/dev/null || true
 
-echo ""
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate irlf
+
+export PYTHONPATH=$PBS_O_WORKDIR:$PYTHONPATH
+
 echo "=========================================="
-echo "  Evaluation complete: $(date)"
+echo "  MO-FAIRL: Evaluation"
+echo "  Job ID: $PBS_JOBID"
+echo "  Start : $(date)"
 echo "=========================================="
+
+python src/evaluate.py --config configs/default.yaml
+
+echo "Evaluation complete: $(date)"

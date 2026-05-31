@@ -164,7 +164,7 @@ def build_dataloaders(
     gen = torch.Generator().manual_seed(seed)
     train_ds, val_ds, test_ds = random_split(dataset, [n_train, n_val, n_test], generator=gen)
 
-    kwargs = dict(collate_fn=collate_fn, num_workers=0, pin_memory=True)
+    kwargs = dict(collate_fn=collate_fn, num_workers=0, pin_memory=False)
     train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  **kwargs)
     val_dl   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, **kwargs)
     test_dl  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, **kwargs)
