@@ -58,9 +58,10 @@ def categorise_sample(
             continue
 
         delta = float(deltas[k])
-        label = int(labels[k])
+        rho = int(labels[k])
+        label = 1 if rho > 0 else 0
         pred  = 1 if delta > 0 else 0
-        fail  = pred != label
+        fail  = (rho * delta) <= 0
         unc   = abs(delta) < epsilon
 
         result["objectives"][obj] = {

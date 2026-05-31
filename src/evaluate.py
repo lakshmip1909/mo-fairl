@@ -88,12 +88,15 @@ def compute_metrics(preds: dict) -> dict:
             print(f"  WARNING: no valid samples for objective {obj}")
             continue
 
-        y_true = labels[valid_idx, k].astype(int)
+        rho = labels[valid_idx, k].astype(int)
         y_gap  = deltas[valid_idx, k]
-        y_prob = 1 / (1 + np.exp(-y_gap))   # sigmoid
+        # Convert rho {-1,+1} back to binary only for metrics
+        y_true = (rho > 0).astype(int)
+        y_prob = 1 / (1 + np.exp(-y_gap))   # P(A preferred)
         y_pred = (y_gap > 0).astype(int)
 
-        acc = accuracy_score(y_true, y_pred)
+        # Correct iff rho * gap > 0
+        acc = np.mean((rho * y_gap) > 0)
         f1  = f1_score(y_true, y_pred, zero_division=0)
         try:
             auc = roc_auc_score(y_true, y_prob)
@@ -124,8 +127,9 @@ def compute_metrics(preds: dict) -> dict:
     any_valid = masks.any(axis=1)
     # For combined, use majority-vote label (or mean label > 0.5)
     label_means = np.where(masks, labels, np.nan)
-    combined_label = np.nanmean(label_means, axis=1)  # [N] mean over valid objs
-    combined_binary = (combined_label > 0.5).astype(int)
+    # labels are rho {-1,+1}; combined preference is sign of average rho
+    combined_label = np.nanmean(label_means, axis=1)
+    combined_binary = (combined_label > 0).astype(int)
 
     valid_combined = any_valid & ~np.isnan(combined_label)
     y_true_c = combined_binary[valid_combined]

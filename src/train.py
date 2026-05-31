@@ -30,10 +30,28 @@ from src.utils import AverageMeter, save_checkpoint, load_checkpoint
 # ── Loss ─────────────────────────────────────────────────────────────────────
 
 def masked_bce_loss(
-    delta:  torch.Tensor,  # [batch, K]  reward gap A - B
-    labels: torch.Tensor,  # [batch, K]  0/1 (NaN where null)
-    mask:   torch.Tensor,  # [batch, K]  bool
-) -> tuple[torch.Tensor, torch.Tensor]:
+    delta: torch.Tensor,
+    labels: torch.Tensor,
+    mask: torch.Tensor,
+    weights: torch.Tensor | None = None,
+):
+    valid = mask.float()
+
+    margin = labels * delta
+
+    loss_elem = -F.logsigmoid(margin) * valid
+
+    valid_counts = valid.sum(dim=0).clamp(min=1)
+
+    per_obj_loss = loss_elem.sum(dim=0) / valid_counts
+
+    if weights is None:
+        total_loss = per_obj_loss.sum()
+    else:
+        total_loss = (weights.to(delta.device) * per_obj_loss).sum()
+
+    return total_loss, per_obj_loss
+
     """
     Returns:
         total_loss:  scalar
@@ -63,7 +81,9 @@ def train_epoch(
     optimizer: torch.optim.Optimizer,
     device:    torch.device,
     grad_clip: float,
+    weights:   torch.Tensor | None = None,
 ) -> dict:
+
     model.train()
     meters = {
         "loss":   AverageMeter(),
@@ -78,7 +98,7 @@ def train_epoch(
 
         delta = model.get_reward_gap(enc_a, enc_b)  # [batch, K]
 
-        loss, per_obj = masked_bce_loss(delta, labels, mask)
+        loss, per_obj = masked_bce_loss(delta, labels, mask, weights)
 
         optimizer.zero_grad()
         loss.backward()
@@ -101,7 +121,9 @@ def val_epoch(
     model:  MultiObjectiveRewardModel,
     loader: DataLoader,
     device: torch.device,
+    weights: torch.Tensor | None = None,
 ) -> dict:
+
     model.eval()
     meters = {
         "loss":   AverageMeter(),
@@ -116,11 +138,10 @@ def val_epoch(
         mask   = batch["mask"].to(device)
 
         delta = model.get_reward_gap(enc_a, enc_b)  # [batch, K]
-        loss, per_obj = masked_bce_loss(delta, labels, mask)
+        loss, per_obj = masked_bce_loss(delta, labels, mask, weights)
 
         # Accuracy: correct when sign(delta) == label
-        preds = (delta > 0).float()   # [batch, K]
-        correct = (preds == labels.clamp(0, 1)).float() * mask.float()  # [batch, K]
+        correct = ((labels * delta) > 0).float() * mask.float()
         valid   = mask.float()
 
         bs = enc_a.size(0)
@@ -169,11 +190,23 @@ def train(
     print(f"\n{'='*60}")
     print(f"  Training for {cfg['num_epochs']} epochs")
     print(f"  Train batches: {len(train_dl)}  |  Val batches: {len(val_dl)}")
+
+    weights_cfg = cfg.get("reward_weights", {
+        "toxicity": 1/3,
+        "math": 1/3,
+        "code": 1/3,
+    })
+    weights = torch.tensor(
+        [weights_cfg[obj] for obj in OBJECTIVES],
+        dtype=torch.float32,
+        device=device,
+    )
+    print(f"  Objective weights: {weights.detach().cpu().tolist()}")
     print(f"{'='*60}\n")
 
     for epoch in range(1, cfg["num_epochs"] + 1):
-        train_metrics = train_epoch(model, train_dl, optimizer, device, cfg["grad_clip"])
-        val_metrics   = val_epoch(model, val_dl, device)
+        train_metrics = train_epoch(model, train_dl, optimizer, device, cfg["grad_clip"], weights)
+        val_metrics   = val_epoch(model, val_dl, device,weights)
         scheduler.step()
 
         # Print
