@@ -1,0 +1,31 @@
+{
+  "toxicity": {
+    "n_samples": 300,
+    "accuracy": 0.97,
+    "f1": 0.9779,
+    "auc": 0.9999,
+    "avg_reward_gap": 1.7975,
+    "avg_reward_margin": 5.1794
+  },
+  "math": {
+    "n_samples": 300,
+    "accuracy": 0.97,
+    "f1": 0.9596,
+    "auc": 0.9987,
+    "avg_reward_gap": -1.5034,
+    "avg_reward_margin": 4.4967
+  },
+  "code": {
+    "n_samples": 300,
+    "accuracy": 0.9867,
+    "f1": 0.9823,
+    "auc": 0.9997,
+    "avg_reward_gap": -1.6183,
+    "avg_reward_margin": 5.4455
+  },
+  "combined": {
+    "n_samples": 300,
+    "accuracy": 0.92,
+    "auc": 0.9947
+  }
+}

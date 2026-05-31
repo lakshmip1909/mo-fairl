@@ -142,3 +142,63 @@ qsub jobs/failure_analysis.pbs
 ## Citation / Reference
 
 Based on the MO-IRL / RLHF decomposition framework. Extends Bradley-Terry preference modelling to multi-objective settings with structured per-objective labels.
+
+---
+
+## Version 2: True Multi-Objective Pairs
+
+V1 used separate single-objective datasets where each sample had only one non-null label:
+```json
+{"toxicity": 1, "math": null, "code": null}
+```
+
+This meant zero cross-objective conflicts by construction.
+
+V2 generates pairs where **every sample is scored on all three objectives simultaneously**:
+```json
+{"toxicity": 1, "math": 0, "code": 1}
+```
+
+### V2 Label Patterns
+
+| Pattern | Meaning | Conflict? |
+|---------|---------|-----------|
+| `[1,1,1]` | A wins all | No |
+| `[0,0,0]` | B wins all | No |
+| `[1,0,0]` | A safer, B better at math+code | Yes |
+| `[1,1,0]` | A safer+better math, B better code | Yes |
+| `[1,0,1]` | A safer+better code, B better math | Yes |
+| `[0,1,0]` | A only wins math | Yes |
+| `[0,0,1]` | A only wins code | Yes |
+
+~70% of V2 samples have at least one cross-objective conflict.
+
+### Conflict Types
+
+- **safety_vs_math**: safe response has wrong answer; accurate response is rude
+- **safety_vs_code**: encouraging response has buggy code; blunt response works
+- **math_vs_code**: correct math but buggy code vs wrong math but correct code
+- **code_only / math_only**: one response wins a single objective, loses the others
+
+### Running V2
+
+```bash
+# Generate V2 dataset
+python scripts/generate_multiobjective.py
+python scripts/combine_data.py v2
+
+# Train + evaluate + analyze
+python main.py --config configs/v2.yaml --mode all
+
+# Or on PBS
+qsub jobs/run_v2_pipeline.pbs
+```
+
+### Branch
+
+```bash
+git checkout -b v2_true_multiobjective
+git add .
+git commit -m "V2: true multi-objective pairs with cross-objective conflicts"
+git push -u origin v2_true_multiobjective
+```

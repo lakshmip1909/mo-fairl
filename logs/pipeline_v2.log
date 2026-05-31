@@ -1,0 +1,190 @@
+==========================================
+  MO-FAIRL V2: Full Pipeline
+  Job ID   : 2898782.pbs-7
+  Start    : Sun 31 May 18:43:00 BST 2026
+==========================================
+--- Generating V2 data ---
+
+  Total samples: 3000
+
+  Conflict type breakdown:
+    none                          :   883  (29.4%)
+    math_vs_code                  :   467  (15.6%)
+    code_vs_math                  :   436  (14.5%)
+    math_only_conflict            :   266  (8.9%)
+    safety_vs_code                :   265  (8.8%)
+    code_only_conflict            :   256  (8.5%)
+    safety_vs_math                :   236  (7.9%)
+    safety_vs_code_v2             :   191  (6.4%)
+
+  Label pattern breakdown:
+    tox=1,math=0,code=0                :   692  (23.1%)
+    tox=1,math=1,code=0                :   467  (15.6%)
+    tox=1,math=1,code=1                :   449  (15.0%)
+    tox=1,math=0,code=1                :   436  (14.5%)
+    tox=0,math=0,code=0                :   434  (14.5%)
+    tox=0,math=1,code=0                :   266  (8.9%)
+    tox=0,math=0,code=1                :   256  (8.5%)
+
+  Samples with at least one cross-objective conflict: 2117 (70.6%)
+
+  Saved 3000 multi-objective pairs to data/multiobjective_pairs.jsonl
+Mode: v2  →  data/combined_pairs_v2.jsonl
+Loaded  3000 samples from data/multiobjective_pairs.jsonl
+
+Combined 3000 samples → data/combined_pairs_v2.jsonl
+
+Breakdown by task:
+  multiobjective: 3000
+
+Label patterns:
+  tox=1,math=0,code=0                :   692  (23.1%)
+  tox=1,math=1,code=0                :   467  (15.6%)
+  tox=1,math=1,code=1                :   449  (15.0%)
+  tox=1,math=0,code=1                :   436  (14.5%)
+  tox=0,math=0,code=0                :   434  (14.5%)
+  tox=0,math=1,code=0                :   266  (8.9%)
+  tox=0,math=0,code=1                :   256  (8.5%)
+--- Training ---
+[Device] Using GPU: NVIDIA L40S
+
+============================================================
+  STEP 2: Training multi-objective reward model
+============================================================
+[Dataset] Loaded 3000 samples from data/combined_pairs_v2.jsonl
+[Dataset] Encoding 5242 unique texts...
+Batches:   0%|          | 0/41 [00:00<?, ?it/s]Batches:   2%|▏         | 1/41 [00:02<01:26,  2.15s/it]Batches:  15%|█▍        | 6/41 [00:02<00:09,  3.51it/s]Batches:  29%|██▉       | 12/41 [00:02<00:03,  8.03it/s]Batches:  44%|████▍     | 18/41 [00:02<00:01, 13.37it/s]Batches:  61%|██████    | 25/41 [00:02<00:00, 20.33it/s]Batches:  78%|███████▊  | 32/41 [00:02<00:00, 27.67it/s]Batches:  98%|█████████▊| 40/41 [00:02<00:00, 36.67it/s]Batches: 100%|██████████| 41/41 [00:02<00:00, 14.59it/s]
+[Dataset] Encoding complete.
+[DataLoader] train=2400  val=300  test=300
+
+  Model parameters: 198,147
+
+============================================================
+  Training for 25 epochs
+  Train batches: 75  |  Val batches: 10
+============================================================
+
+Epoch   1/25  train_loss=2.0883  val_loss=1.9769  acc_toxicity=0.773  acc_math=0.557  acc_code=0.567
+  ✓ New best val_loss: 1.9769
+Epoch   2/25  train_loss=1.9716  val_loss=1.8774  acc_toxicity=0.823  acc_math=0.643  acc_code=0.703
+  ✓ New best val_loss: 1.8774
+Epoch   3/25  train_loss=1.8813  val_loss=1.7737  acc_toxicity=0.833  acc_math=0.710  acc_code=0.777
+  ✓ New best val_loss: 1.7737
+Epoch   4/25  train_loss=1.7749  val_loss=1.6653  acc_toxicity=0.837  acc_math=0.747  acc_code=0.820
+  ✓ New best val_loss: 1.6653
+Epoch   5/25  train_loss=1.6657  val_loss=1.5524  acc_toxicity=0.840  acc_math=0.783  acc_code=0.853
+  ✓ New best val_loss: 1.5524
+Epoch   6/25  train_loss=1.5483  val_loss=1.4383  acc_toxicity=0.850  acc_math=0.817  acc_code=0.870
+  ✓ New best val_loss: 1.4383
+Epoch   7/25  train_loss=1.4338  val_loss=1.3229  acc_toxicity=0.850  acc_math=0.843  acc_code=0.897
+  ✓ New best val_loss: 1.3229
+Epoch   8/25  train_loss=1.3106  val_loss=1.2073  acc_toxicity=0.853  acc_math=0.887  acc_code=0.903
+  ✓ New best val_loss: 1.2073
+Epoch   9/25  train_loss=1.1997  val_loss=1.0995  acc_toxicity=0.860  acc_math=0.900  acc_code=0.907
+  ✓ New best val_loss: 1.0995
+Epoch  10/25  train_loss=1.1081  val_loss=0.9979  acc_toxicity=0.870  acc_math=0.910  acc_code=0.910
+  ✓ New best val_loss: 0.9979
+Epoch  11/25  train_loss=1.0026  val_loss=0.9079  acc_toxicity=0.873  acc_math=0.923  acc_code=0.910
+  ✓ New best val_loss: 0.9079
+Epoch  12/25  train_loss=0.9227  val_loss=0.8270  acc_toxicity=0.880  acc_math=0.927  acc_code=0.913
+  ✓ New best val_loss: 0.8270
+Epoch  13/25  train_loss=0.8416  val_loss=0.7537  acc_toxicity=0.893  acc_math=0.930  acc_code=0.923
+  ✓ New best val_loss: 0.7537
+Epoch  14/25  train_loss=0.7678  val_loss=0.6885  acc_toxicity=0.903  acc_math=0.930  acc_code=0.927
+  ✓ New best val_loss: 0.6885
+Epoch  15/25  train_loss=0.7015  val_loss=0.6307  acc_toxicity=0.903  acc_math=0.937  acc_code=0.933
+  ✓ New best val_loss: 0.6307
+Epoch  16/25  train_loss=0.6444  val_loss=0.5772  acc_toxicity=0.910  acc_math=0.943  acc_code=0.950
+  ✓ New best val_loss: 0.5772
+Epoch  17/25  train_loss=0.5840  val_loss=0.5296  acc_toxicity=0.920  acc_math=0.947  acc_code=0.950
+  ✓ New best val_loss: 0.5296
+Epoch  18/25  train_loss=0.5369  val_loss=0.4855  acc_toxicity=0.920  acc_math=0.957  acc_code=0.953
+  ✓ New best val_loss: 0.4855
+Epoch  19/25  train_loss=0.4848  val_loss=0.4468  acc_toxicity=0.933  acc_math=0.957  acc_code=0.960
+  ✓ New best val_loss: 0.4468
+Epoch  20/25  train_loss=0.4520  val_loss=0.4117  acc_toxicity=0.940  acc_math=0.963  acc_code=0.963
+  ✓ New best val_loss: 0.4117
+Epoch  21/25  train_loss=0.4183  val_loss=0.3801  acc_toxicity=0.943  acc_math=0.963  acc_code=0.963
+  ✓ New best val_loss: 0.3801
+Epoch  22/25  train_loss=0.3872  val_loss=0.3511  acc_toxicity=0.943  acc_math=0.963  acc_code=0.970
+  ✓ New best val_loss: 0.3511
+Epoch  23/25  train_loss=0.3494  val_loss=0.3271  acc_toxicity=0.943  acc_math=0.967  acc_code=0.963
+  ✓ New best val_loss: 0.3271
+Epoch  24/25  train_loss=0.3449  val_loss=0.3027  acc_toxicity=0.943  acc_math=0.970  acc_code=0.963
+  ✓ New best val_loss: 0.3027
+Epoch  25/25  train_loss=0.3021  val_loss=0.2805  acc_toxicity=0.947  acc_math=0.970  acc_code=0.960
+  ✓ New best val_loss: 0.2805
+
+Training complete. Best val_loss: 0.2805
+[History] Saved training history to outputs/metrics/training_history.json
+[Plot] Saved training history plot to outputs/plots_v2/training_history.png
+
+✓ Pipeline complete.
+--- Evaluating ---
+[Device] Using GPU: NVIDIA L40S
+
+============================================================
+  STEP 3: Evaluating on test set
+============================================================
+[Dataset] Loaded 3000 samples from data/combined_pairs_v2.jsonl
+[Dataset] Encoding 5242 unique texts...
+Batches:   0%|          | 0/41 [00:00<?, ?it/s]Batches:   2%|▏         | 1/41 [00:00<00:09,  4.01it/s]Batches:  15%|█▍        | 6/41 [00:00<00:01, 19.90it/s]Batches:  29%|██▉       | 12/41 [00:00<00:00, 32.53it/s]Batches:  44%|████▍     | 18/41 [00:00<00:00, 41.24it/s]Batches:  61%|██████    | 25/41 [00:00<00:00, 48.51it/s]Batches:  78%|███████▊  | 32/41 [00:00<00:00, 54.10it/s]Batches:  98%|█████████▊| 40/41 [00:00<00:00, 60.79it/s]Batches: 100%|██████████| 41/41 [00:00<00:00, 45.57it/s]
+[Dataset] Encoding complete.
+[DataLoader] train=2400  val=300  test=300
+  Loaded checkpoint: outputs/checkpoints_v2/best_model.pt
+
+── Evaluation ──────────────────────────────────────────────
+
+  Per-objective metrics:
+  [toxicity  ]  n=  300  acc=0.970  f1=0.978  auc=1.000  avg_gap=+1.798  margin=5.179
+  [math      ]  n=  300  acc=0.970  f1=0.960  auc=0.999  avg_gap=-1.503  margin=4.497
+  [code      ]  n=  300  acc=0.987  f1=0.982  auc=1.000  avg_gap=-1.618  margin=5.445
+  [combined  ]  n=  300  acc=0.920  auc=0.995
+  Saved: outputs/plots_v2/reward_gap_distributions.png
+  Saved: outputs/plots_v2/per_objective_metrics.png
+
+  Metrics saved to: outputs/metrics_v2/test_metrics.json
+
+✓ Pipeline complete.
+--- Failure Analysis ---
+[Device] Using GPU: NVIDIA L40S
+
+============================================================
+  STEP 4: Failure analysis
+============================================================
+[Dataset] Loaded 3000 samples from data/combined_pairs_v2.jsonl
+[Dataset] Encoding 5242 unique texts...
+Batches:   0%|          | 0/41 [00:00<?, ?it/s]Batches:   2%|▏         | 1/41 [00:00<00:10,  3.74it/s]Batches:  15%|█▍        | 6/41 [00:00<00:01, 19.02it/s]Batches:  29%|██▉       | 12/41 [00:00<00:00, 31.38it/s]Batches:  44%|████▍     | 18/41 [00:00<00:00, 40.11it/s]Batches:  61%|██████    | 25/41 [00:00<00:00, 47.47it/s]Batches:  78%|███████▊  | 32/41 [00:00<00:00, 53.10it/s]Batches:  98%|█████████▊| 40/41 [00:00<00:00, 59.92it/s]Batches: 100%|██████████| 41/41 [00:00<00:00, 44.35it/s]
+[Dataset] Encoding complete.
+[DataLoader] train=2400  val=300  test=300
+  Loaded checkpoint: outputs/checkpoints_v2/best_model.pt
+
+── Failure Analysis ────────────────────────────────────────
+  Total test samples: 300
+  CONFLICT_CLEAN                :   199  (66.3%)
+  CLEAN                         :    88  (29.3%)
+  CONFLICT_MULTI_FAILURE        :     7  (2.3%)
+  CONFLICT_SINGLE_FAILURE       :     4  (1.3%)
+  CONFLICT_UNCERTAIN            :     2  (0.7%)
+
+  Per-objective failure rates:
+
+  Conflicts found: 212
+  Outputs saved to: outputs/failure_examples_v2
+  Saved: outputs/failure_examples_v2/failure_breakdown.png
+  Saved: outputs/failure_examples_v2/per_objective_failures.png
+
+✓ Pipeline complete.
+
+==========================================
+  V2 pipeline complete: Sun 31 May 18:49:43 BST 2026
+==========================================
+
+====================================
+CPU Time used: 00:00:40
+CPU Percent: 42%
+Memory usage: 1491660kb
+Approx Power usage: 0.0
+Walltime usage: 00:06:46
+
+====================================

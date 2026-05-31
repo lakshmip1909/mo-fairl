@@ -1,0 +1,19 @@
+{
+  "total_samples": 500,
+  "category_counts": {
+    "CLEAN": 396,
+    "SINGLE_FAILURE": 68,
+    "UNCERTAIN": 36
+  },
+  "category_rates": {
+    "CLEAN": 0.792,
+    "SINGLE_FAILURE": 0.136,
+    "UNCERTAIN": 0.072
+  },
+  "per_objective_failure_counts": {
+    "toxicity": 0,
+    "math": 68,
+    "code": 0
+  },
+  "conflict_count": 0
+}

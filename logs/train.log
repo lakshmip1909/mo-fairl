@@ -1,0 +1,54 @@
+==========================================
+  MO-FAIRL: Training
+  Job ID   : 2891443.pbs-7
+  Start    : Sat 30 May 07:55:35 BST 2026
+==========================================
+[Device] Using GPU: NVIDIA L40S
+
+============================================================
+  STEP 2: Training multi-objective reward model
+============================================================
+[Dataset] Loaded 5000 samples from data/combined_pairs.jsonl
+[Dataset] Encoding 3988 unique texts...
+Batches:   0%|          | 0/32 [00:00<?, ?it/s]Batches:   3%|▎         | 1/32 [00:01<01:01,  2.00s/it]Batches:  38%|███▊      | 12/32 [00:02<00:02,  7.78it/s]Batches:  78%|███████▊  | 25/32 [00:02<00:00, 18.30it/s]Batches: 100%|██████████| 32/32 [00:02<00:00, 14.11it/s]
+[Dataset] Encoding complete.
+[DataLoader] train=4000  val=500  test=500
+
+  Model parameters: 198,147
+
+============================================================
+  Training for 20 epochs
+  Train batches: 125  |  Val batches: 16
+============================================================
+
+Traceback (most recent call last):
+  File "/rds/general/user/ls1925/home/mo-fairl/mo-fairl/main.py", line 188, in <module>
+    main()
+  File "/rds/general/user/ls1925/home/mo-fairl/mo-fairl/main.py", line 176, in main
+    step_train(config, device)
+  File "/rds/general/user/ls1925/home/mo-fairl/mo-fairl/main.py", line 88, in step_train
+    history = train(model, train_dl, val_dl, config, device)
+  File "/rds/general/user/ls1925/home/mo-fairl/mo-fairl/src/train.py", line 179, in train
+    train_metrics = train_epoch(model, train_dl, optimizer, device, cfg["grad_clip"])
+  File "/rds/general/user/ls1925/home/mo-fairl/mo-fairl/src/train.py", line 77, in train_epoch
+    for batch in loader:
+  File "/rds/general/user/ls1925/home/miniconda3/envs/irlf/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 741, in __next__
+    data = self._next_data()
+  File "/rds/general/user/ls1925/home/miniconda3/envs/irlf/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 803, in _next_data
+    data = _utils.pin_memory.pin_memory(data, self._pin_memory_device)
+  File "/rds/general/user/ls1925/home/miniconda3/envs/irlf/lib/python3.10/site-packages/torch/utils/data/_utils/pin_memory.py", line 68, in pin_memory
+    {k: pin_memory(sample, device) for k, sample in data.items()}
+  File "/rds/general/user/ls1925/home/miniconda3/envs/irlf/lib/python3.10/site-packages/torch/utils/data/_utils/pin_memory.py", line 68, in <dictcomp>
+    {k: pin_memory(sample, device) for k, sample in data.items()}
+  File "/rds/general/user/ls1925/home/miniconda3/envs/irlf/lib/python3.10/site-packages/torch/utils/data/_utils/pin_memory.py", line 57, in pin_memory
+    return data.pin_memory(device)
+RuntimeError: cannot pin 'torch.cuda.FloatTensor' only dense CPU tensors can be pinned
+
+====================================
+CPU Time used: 00:00:12
+CPU Percent: 10%
+Memory usage: 542112kb
+Approx Power usage: 0.0
+Walltime usage: 00:03:10
+
+====================================

@@ -1,0 +1,23 @@
+{
+  "total_samples": 300,
+  "category_counts": {
+    "CONFLICT_CLEAN": 199,
+    "CLEAN": 88,
+    "CONFLICT_MULTI_FAILURE": 7,
+    "CONFLICT_UNCERTAIN": 2,
+    "CONFLICT_SINGLE_FAILURE": 4
+  },
+  "category_rates": {
+    "CONFLICT_CLEAN": 0.6633,
+    "CLEAN": 0.2933,
+    "CONFLICT_MULTI_FAILURE": 0.0233,
+    "CONFLICT_UNCERTAIN": 0.0067,
+    "CONFLICT_SINGLE_FAILURE": 0.0133
+  },
+  "per_objective_failure_counts": {
+    "toxicity": 9,
+    "math": 9,
+    "code": 4
+  },
+  "conflict_count": 212
+}

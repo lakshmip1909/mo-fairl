@@ -2,7 +2,7 @@
 #PBS -N mo_fairl_failure
 #PBS -l walltime=01:00:00
 #PBS -l ncpus=4
-#PBS -l mem=16gb
+#PBS -l mem=8gb
 #PBS -l ngpus=1
 #PBS -j oe
 #PBS -o logs/failure_analysis.log
@@ -10,22 +10,23 @@
 set -e
 cd "$PBS_O_WORKDIR"
 
-mkdir -p logs outputs/failure_examples outputs/metrics outputs/plots
+echo "=========================================="
+echo "  MO-FAIRL: Failure Analysis"
+echo "  Job ID   : $PBS_JOBID"
+echo "  Start    : $(date)"
+echo "=========================================="
 
 module load anaconda3/personal 2>/dev/null || true
-module load cuda/12.1 2>/dev/null || true
+module load cuda/12.1   2>/dev/null || true
 
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate irlf
 
-export PYTHONPATH=$PBS_O_WORKDIR:$PYTHONPATH
+mkdir -p logs outputs/failure_examples
 
+python main.py --config configs/default.yaml --mode analyze
+
+echo ""
 echo "=========================================="
-echo "  MO-FAIRL: Failure Analysis"
-echo "  Job ID: $PBS_JOBID"
-echo "  Start : $(date)"
+echo "  Failure analysis complete: $(date)"
 echo "=========================================="
-
-python main.py --config configs/default.yaml --mode analyze --checkpoint outputs/checkpoints/best_model.pt
-
-echo "Failure analysis complete: $(date)"

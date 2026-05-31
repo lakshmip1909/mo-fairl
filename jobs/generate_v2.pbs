@@ -1,32 +1,32 @@
 #!/bin/bash
-#PBS -N mo_fairl_eval
+#PBS -N mo_fairl_generate_v2
 #PBS -l walltime=01:00:00
 #PBS -l ncpus=4
 #PBS -l mem=8gb
-#PBS -l ngpus=1
 #PBS -j oe
-#PBS -o logs/evaluate.log
+#PBS -o logs/generate_v2.log
 
 set -e
 cd "$PBS_O_WORKDIR"
 
 echo "=========================================="
-echo "  MO-FAIRL: Evaluation"
+echo "  MO-FAIRL V2: Multi-Objective Data Generation"
 echo "  Job ID   : $PBS_JOBID"
 echo "  Start    : $(date)"
 echo "=========================================="
 
 module load anaconda3/personal 2>/dev/null || true
-module load cuda/12.1   2>/dev/null || true
-
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate irlf
+mkdir -p logs data
 
-mkdir -p logs outputs/metrics outputs/plots
+echo "Generating true multi-objective pairs..."
+python scripts/generate_multiobjective.py
 
-python main.py --config configs/default.yaml --mode evaluate
+echo "Combining V2 dataset..."
+python scripts/combine_data.py v2
 
 echo ""
 echo "=========================================="
-echo "  Evaluation complete: $(date)"
+echo "  V2 data generation complete: $(date)"
 echo "=========================================="

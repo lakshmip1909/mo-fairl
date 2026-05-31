@@ -17,13 +17,13 @@ echo "  Job ID   : $PBS_JOBID"
 echo "  Start    : $(date)"
 echo "=========================================="
 
-module load python/3.11 2>/dev/null || true
+module load anaconda3/personal 2>/dev/null || true
 module load cuda/12.1   2>/dev/null || true
 
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate irlf
 
-mkdir -p logs 
+mkdir -p logs outputs/checkpoints outputs/metrics outputs/plots
 
 # ── Train ──────────────────────────────────────────────────────────────────────
 python main.py --config configs/default.yaml --mode train

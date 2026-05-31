@@ -41,12 +41,8 @@ def masked_bce_loss(
     """
     prob = torch.sigmoid(delta)  # [batch, K]
 
-    # Replace null/irrelevant labels with 0 before BCE.
-    # They are removed immediately after using the mask.
-    safe_labels = torch.where(mask, labels, torch.zeros_like(labels))
-
     # BCE element-wise (no reduction)
-    bce = F.binary_cross_entropy(prob, safe_labels, reduction="none")  # [batch, K]
+    bce = F.binary_cross_entropy(prob, labels.clamp(0, 1), reduction="none")  # [batch, K]
 
     # Zero out where mask is False (null labels)
     bce = bce * mask.float()

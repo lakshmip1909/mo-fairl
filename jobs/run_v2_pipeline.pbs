@@ -1,0 +1,50 @@
+#!/bin/bash
+#PBS -N mo_fairl_v2
+#PBS -l walltime=06:00:00
+#PBS -l ncpus=4
+#PBS -l mem=16gb
+#PBS -l ngpus=1
+#PBS -j oe
+#PBS -o logs/pipeline_v2.log
+
+set -e
+cd "$PBS_O_WORKDIR"
+
+echo "=========================================="
+echo "  MO-FAIRL V2: Full Pipeline"
+echo "  Job ID   : $PBS_JOBID"
+echo "  Start    : $(date)"
+echo "=========================================="
+
+module load anaconda3/personal 2>/dev/null || true
+module load cuda/12.1   2>/dev/null || true
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate irlf
+
+mkdir -p logs data \
+    outputs/checkpoints_v2 \
+    outputs/metrics_v2 \
+    outputs/plots_v2 \
+    outputs/failure_examples_v2
+
+# Generate
+echo "--- Generating V2 data ---"
+python scripts/generate_multiobjective.py
+python scripts/combine_data.py v2
+
+# Train
+echo "--- Training ---"
+python main.py --config configs/v2.yaml --mode train
+
+# Evaluate
+echo "--- Evaluating ---"
+python main.py --config configs/v2.yaml --mode evaluate
+
+# Failure analysis
+echo "--- Failure Analysis ---"
+python main.py --config configs/v2.yaml --mode analyze
+
+echo ""
+echo "=========================================="
+echo "  V2 pipeline complete: $(date)"
+echo "=========================================="
