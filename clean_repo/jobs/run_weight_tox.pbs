@@ -1,0 +1,21 @@
+#!/bin/bash
+#PBS -N weight_tox
+#PBS -l walltime=02:00:00
+#PBS -l ncpus=8
+#PBS -l mem=32gb
+#PBS -l ngpus=1
+#PBS -j oe
+#PBS -o logs/weight_tox.log
+
+set -e
+cd "$PBS_O_WORKDIR"
+
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate irlf
+
+mkdir -p logs outputs/checkpoints_weight_tox outputs/metrics_weight_tox outputs/plots_weight_tox outputs/failure_examples_weight_tox
+
+python scripts/real/build_weight_recovery_pairs.py --mode tox
+python main_conflict.py --config configs/weight_tox.yaml --mode train
+python main_conflict.py --config configs/weight_tox.yaml --mode evaluate --checkpoint outputs/checkpoints_weight_tox/best_model.pt
+python main_conflict.py --config configs/weight_tox.yaml --mode analyze --checkpoint outputs/checkpoints_weight_tox/best_model.pt

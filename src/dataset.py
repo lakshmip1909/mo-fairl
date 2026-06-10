@@ -17,6 +17,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 from sentence_transformers import SentenceTransformer
 
 # Objective index mapping — must match reward_model.py
+# Labels stored as rho in {-1, +1} (from notes Ass 2)
 OBJECTIVES = ["toxicity", "math", "code"]
 OBJ2IDX    = {o: i for i, o in enumerate(OBJECTIVES)}
 K          = len(OBJECTIVES)
@@ -27,7 +28,7 @@ class PreferenceDataset(Dataset):
     Each item returns:
         enc_a   : FloatTensor [hidden_dim]  — encoded (prompt + response_a)
         enc_b   : FloatTensor [hidden_dim]  — encoded (prompt + response_b)
-        labels  : FloatTensor [K]           — {0, 1, NaN} per objective
+        rho     : FloatTensor [K]           — {-1.0, +1.0} per objective (rho convention)
         mask    : BoolTensor  [K]           — True where label is not null
         task    : str
     """
@@ -93,21 +94,31 @@ class PreferenceDataset(Dataset):
     @staticmethod
     def _parse_labels(raw_labels: dict) -> tuple[torch.Tensor, torch.Tensor]:
         """
+        Converts raw {0,1} labels to rho in {-1, +1} as specified in the notes.
+
+        Convention (Ass 2 from notes):
+            rho_i^k = +1  if response_a preferred on objective k  (raw label = 1)
+            rho_i^k = -1  if response_b preferred on objective k  (raw label = 0)
+
+        This matches the margin loss:
+            L^k = -log sigma(rho_i^k * delta_i^k)
+        where delta_i^k = r_k(A) - r_k(B).
+
         Returns:
-            labels: FloatTensor [K] — 0.0 or 1.0 (NaN where null)
-            mask  : BoolTensor  [K] — True where label is not null
+            rho  : FloatTensor [K] — {-1.0, +1.0}  (0.0 where null, use mask)
+            mask : BoolTensor  [K] — True where label is not null
         """
-        labels = []
-        mask   = []
+        rho  = []
+        mask = []
         for obj in OBJECTIVES:
             val = raw_labels.get(obj, None)
             if val is None:
-                labels.append(float("nan"))
+                rho.append(0.0)          # placeholder, masked out in loss
                 mask.append(False)
             else:
-                labels.append(float(val))
+                rho.append(1.0 if val == 1 else -1.0)   # {0,1} -> {-1,+1}
                 mask.append(True)
-        return torch.tensor(labels, dtype=torch.float32), torch.tensor(mask, dtype=torch.bool)
+        return torch.tensor(rho, dtype=torch.float32), torch.tensor(mask, dtype=torch.bool)
 
     # ── Dataset interface ──────────────────────────────────────────────────────
 
@@ -128,7 +139,7 @@ class PreferenceDataset(Dataset):
         return {
             "enc_a":  enc_a,
             "enc_b":  enc_b,
-            "labels": labels,   # [K]
+            "rho":    labels,   # [K]  rho in {-1,+1}
             "mask":   mask,     # [K]
             "task":   s.get("task", "unknown"),
         }
@@ -138,7 +149,7 @@ def collate_fn(batch: list[dict]) -> dict:
     return {
         "enc_a":  torch.stack([b["enc_a"]  for b in batch]),
         "enc_b":  torch.stack([b["enc_b"]  for b in batch]),
-        "labels": torch.stack([b["labels"] for b in batch]),
+        "rho":    torch.stack([b["rho"]    for b in batch]),
         "mask":   torch.stack([b["mask"]   for b in batch]),
         "task":   [b["task"] for b in batch],
     }
@@ -164,7 +175,7 @@ def build_dataloaders(
     gen = torch.Generator().manual_seed(seed)
     train_ds, val_ds, test_ds = random_split(dataset, [n_train, n_val, n_test], generator=gen)
 
-    kwargs = dict(collate_fn=collate_fn, num_workers=0, pin_memory=False)
+    kwargs = dict(collate_fn=collate_fn, num_workers=0, pin_memory=True)
     train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  **kwargs)
     val_dl   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, **kwargs)
     test_dl  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, **kwargs)

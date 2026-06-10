@@ -1,0 +1,17 @@
+#!/bin/bash
+#PBS -N train_v3
+#PBS -l walltime=20:00:00
+#PBS -l ncpus=8
+#PBS -l mem=32gb
+#PBS -l ngpus=1
+#PBS -j oe
+#PBS -o logs/train_v3.log
+
+cd $PBS_O_WORKDIR
+
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate irlf
+
+mkdir -p logs outputs/checkpoints_v3 outputs/metrics_v3 outputs/plots_v3
+
+python main_pythia.py --config configs/v3_pythia.yaml --mode train

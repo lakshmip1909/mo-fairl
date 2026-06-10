@@ -1,0 +1,57 @@
+#!/bin/bash
+#PBS -N mo_fairl_conflict
+#PBS -l walltime=08:00:00
+#PBS -l ncpus=8
+#PBS -l mem=32gb
+#PBS -l ngpus=1
+#PBS -j oe
+#PBS -o logs/pipeline_conflict_dro.log
+
+set -e
+cd "$PBS_O_WORKDIR"
+
+echo "=========================================="
+echo "  MO-FAIRL Conflict: Learnable w_phi"
+echo "  Job ID   : $PBS_JOBID"
+echo "  Node     : $(hostname)"
+echo "  Start    : $(date)"
+echo "=========================================="
+
+module load anaconda3/personal 2>/dev/null || true
+module load cuda/12.1 2>/dev/null || true
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate irlf
+
+mkdir -p logs data/real \
+    outputs/checkpoints_conflict_dro \
+    outputs/metrics_conflict_dro \
+    outputs/plots_conflict_dro \
+    outputs/failure_examples_conflict_dro
+
+echo "--- GPU ---"
+nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>/dev/null || true
+
+echo ""
+echo "--- Installing detoxify if needed ---"
+pip install detoxify --quiet 2>/dev/null || true
+
+echo ""
+echo "--- Building conflict pairs ---"
+python scripts/real/build_conflict_pairs.py
+
+echo ""
+echo "--- Training ---"
+python main_conflict.py --config configs/conflict.yaml --mode train
+
+echo ""
+echo "--- Evaluating ---"
+python main_conflict.py --config configs/conflict.yaml --mode evaluate
+
+echo ""
+echo "--- Failure analysis ---"
+python main_conflict.py --config configs/conflict.yaml --mode analyze
+
+echo ""
+echo "=========================================="
+echo "  Conflict pipeline complete: $(date)"
+echo "=========================================="

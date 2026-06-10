@@ -1,0 +1,34 @@
+#!/bin/bash
+#PBS -N conflict_v5
+#PBS -l walltime=02:00:00
+#PBS -l ncpus=8
+#PBS -l mem=32gb
+#PBS -l ngpus=1
+#PBS -j oe
+#PBS -o logs/pipeline_conflict_v5.log
+
+set -e
+cd "$PBS_O_WORKDIR"
+
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate irlf
+
+mkdir -p logs \
+  outputs/checkpoints_conflict_v5 \
+  outputs/metrics_conflict_v5 \
+  outputs/plots_conflict_v5 \
+  outputs/failure_examples_conflict_v5
+
+echo "--- Generate V5 conflict data ---"
+python scripts/real/build_conflict_pairs_v5.py
+
+echo "--- Train V5 ---"
+python main_conflict.py --config configs/conflict_v5.yaml --mode train
+
+echo "--- Evaluate V5 ---"
+python main_conflict.py --config configs/conflict_v5.yaml --mode evaluate --checkpoint outputs/checkpoints_conflict_v5/best_model.pt
+
+echo "--- Analyse V5 ---"
+python main_conflict.py --config configs/conflict_v5.yaml --mode analyze --checkpoint outputs/checkpoints_conflict_v5/best_model.pt
+
+echo "V5 complete."

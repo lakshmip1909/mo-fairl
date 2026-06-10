@@ -16,10 +16,9 @@ echo "  Job ID   : $PBS_JOBID"
 echo "  Start    : $(date)"
 echo "=========================================="
 
-module load anaconda3/personal 2>/dev/null || true
+module load python/3.11 2>/dev/null || true
 module load cuda/12.1   2>/dev/null || true
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate irlf
+source venv/bin/activate
 
 mkdir -p logs data \
     outputs/checkpoints_v2 \

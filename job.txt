@@ -1,0 +1,60 @@
+Job Id: 2899875.pbs-7
+    Job_Name = mo_fairl_v3_pythia
+    Job_Owner = ls1925@login-ai.cx3.hpc.ic.ac.uk
+    resources_used.cpupercent = 99
+    resources_used.cput = 07:17:39
+    resources_used.mem = 2522232kb
+    resources_used.ncpus = 8
+    resources_used.vmem = 8060432kb
+    resources_used.walltime = 07:22:24
+    job_state = R
+    queue = v1_gpu72
+    server = pbs-7
+    Checkpoint = u
+    ctime = Mon Jun  1 00:11:48 2026
+    Error_Path = login-ai.cx3.hpc.ic.ac.uk:/rds/general/user/ls1925/home/mo-fai
+	rl/mo_fairl_v3_pythia.e2899875
+    exec_host = cx3-20-1/2*8
+    exec_vnode = (cx3-20-1:mem=33554432kb:ncpus=8:ngpus=1)
+    Hold_Types = n
+    Join_Path = oe
+    Keep_Files = n
+    Mail_Points = a
+    mtime = Mon Jun  1 07:56:29 2026
+    Output_Path = login-ai.cx3.hpc.ic.ac.uk:/rds/general/user/ls1925/home/mo-fa
+	irl/logs/pipeline_v3.log
+    Priority = 0
+    qtime = Mon Jun  1 00:11:48 2026
+    Rerunable = True
+    Resource_List.mem = 32gb
+    Resource_List.ncpus = 8
+    Resource_List.ngpus = 1
+    Resource_List.nodect = 1
+    Resource_List.place = pack
+    Resource_List.priority_job = 0
+    Resource_List.select = 1:mem=32gb:ncpus=8:ngpus=1
+    Resource_List.walltime = 08:00:00
+    stime = Mon Jun  1 00:34:03 2026
+    session_id = 2725525
+    jobdir = /rds/general/user/ls1925/home
+    substate = 42
+    Variable_List = PBS_O_HOME=/rds/general/user/ls1925/home,
+	PBS_O_LANG=en_GB.UTF-8,PBS_O_LOGNAME=ls1925,
+	PBS_O_PATH=/rds/general/user/ls1925/home/miniconda3/envs/irlf/bin:/rds
+	/general/user/ls1925/home/miniconda3/condabin:/usr/local/bin:/usr/bin:/
+	usr/local/sbin:/usr/sbin:/opt/pbs/bin,
+	PBS_O_MAIL=/var/spool/mail/ls1925,PBS_O_SHELL=/bin/bash,
+	PBS_O_HOST=login-ai.cx3.hpc.ic.ac.uk,
+	PBS_O_WORKDIR=/rds/general/user/ls1925/home/mo-fairl,
+	PBS_O_SYSTEM=Linux,PBS_O_QUEUE=cx,
+	PBS_SCRATCH_SHM=/dev/shm/pbs.2899875.pbs-7.x8z
+    comment = Job run at Mon Jun 01 at 00:34 on (cx3-20-1:mem=33554432kb:ncpus=
+	8:ngpus=1)
+    etime = Mon Jun  1 00:11:48 2026
+    run_count = 1
+    Submit_arguments = jobs/run_v3_pythia.pbs
+    estimated.exec_vnode = (cx3-20-4:mem=33554432kb:ncpus=8:ngpus=1)
+    estimated.start_time = Mon Jun  1 01:07:33 2026
+    project = _pbs_project_default
+    Submit_Host = login-ai.cx3.hpc.ic.ac.uk
+

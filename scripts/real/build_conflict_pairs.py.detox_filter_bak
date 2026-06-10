@@ -1,0 +1,387 @@
+"""
+scripts/real/build_conflict_pairs.py
+
+Builds REAL multi-objective conflict pairs using:
+  - Real prompts from GSM8K (math)
+  - Templated responses with controlled tone + correctness
+  - Detoxify classifier to automatically verify toxicity labels
+  - GSM8K answer extractor to verify math labels
+
+Every pair has labels for BOTH toxicity and math.
+Conflict pairs: toxicity and math labels DISAGREE.
+Non-conflict pairs: both agree (for dataset balance).
+
+Conflict types produced:
+  Type A  [tox=1, math=0]:  safe+wrong   vs  toxic+correct   (safety wins, math loses)
+  Type B  [tox=0, math=1]:  toxic+correct vs  safe+wrong      (math wins, safety loses)
+  Type C  [tox=1, math=1]:  safe+correct  vs  toxic+wrong     (A wins both — no conflict)
+  Type D  [tox=0, math=0]:  toxic+wrong   vs  safe+correct    (B wins both — no conflict)
+
+Types A and B are the true conflicts.
+Types C and D are kept for balance (model needs to see non-conflict cases too).
+
+Output: data/real/conflict_pairs.jsonl
+"""
+
+import json
+import random
+import re
+import os
+from pathlib import Path
+
+random.seed(42)
+
+# ── Tone templates ─────────────────────────────────────────────────────────────
+
+SAFE_INTROS = [
+    "Sure! Let me work through this step by step.",
+    "Great question. Here's how I'd approach it.",
+    "Happy to help! Let me think through this carefully.",
+    "Of course! Here is the solution.",
+    "Let me solve this for you.",
+    "No problem, let's work this out together.",
+    "Here's a clear solution to this problem.",
+    "I'd be happy to help you with this.",
+]
+
+SAFE_OUTROS = [
+    "Hope that helps! Let me know if you have questions.",
+    "Let me know if you need any clarification.",
+    "Feel free to ask if anything is unclear.",
+    "Happy to explain any step in more detail.",
+    "",
+]
+
+TOXIC_INTROS = [
+    "Are you serious? This is basic arithmetic.",
+    "Ugh, fine. Here:",
+    "This is embarrassingly simple.",
+    "Did you even try? Here's the answer.",
+    "I can't believe you need help with this.",
+    "This took me two seconds. Pay attention.",
+    "What a waste of time. Obviously:",
+    "Are you kidding me? It's just math.",
+]
+
+TOXIC_OUTROS = [
+    "Figure out the rest yourself.",
+    "Hope you can follow that.",
+    "Don't ask me such obvious questions.",
+    "",
+    "Next time try harder before asking.",
+]
+
+
+def safe_response(answer) -> str:
+    intro = random.choice(SAFE_INTROS)
+    outro = random.choice(SAFE_OUTROS)
+    body  = f"The answer is {answer}."
+    parts = [intro, body]
+    if outro:
+        parts.append(outro)
+    return "\n".join(parts)
+
+
+def toxic_response(answer) -> str:
+    intro = random.choice(TOXIC_INTROS)
+    outro = random.choice(TOXIC_OUTROS)
+    body  = f"The answer is {answer}."
+    parts = [intro, body]
+    if outro:
+        parts.append(outro)
+    return "\n".join(parts)
+
+
+# ── Answer extraction and perturbation ────────────────────────────────────────
+
+def extract_answer(solution: str):
+    """Extract final numeric answer from GSM8K solution string."""
+    match = re.search(r"####\s*([\d,\-\.]+)", solution)
+    if not match:
+        return None
+    raw = match.group(1).replace(",", "")
+    try:
+        val = float(raw)
+        return int(val) if val == int(val) else round(val, 2)
+    except ValueError:
+        return None
+
+
+def make_wrong_answer(correct):
+    """Perturb the correct answer to make a plausible wrong one."""
+    strategies = [
+        lambda v: v + random.randint(1, 10),
+        lambda v: v - random.randint(1, 10),
+        lambda v: v + random.choice([50, 100, -50, -100]),
+        lambda v: int(v * random.choice([2, 3])),
+        lambda v: v + random.randint(11, 30),
+    ]
+    random.shuffle(strategies)
+    for fn in strategies:
+        try:
+            wrong = fn(correct)
+            if wrong != correct and wrong > 0:
+                return int(wrong) if wrong == int(wrong) else round(wrong, 2)
+        except Exception:
+            continue
+    return correct + 7
+
+
+# ── Detoxify verification ──────────────────────────────────────────────────────
+
+def load_detoxify():
+    """Load Detoxify model. Returns None if not installed."""
+    try:
+        from detoxify import Detoxify
+        print("[Detoxify] Loading model...")
+        model = Detoxify("original")
+        print("[Detoxify] Ready.")
+        return model
+    except ImportError:
+        print("[Detoxify] Not installed. pip install detoxify")
+        print("[Detoxify] Falling back to heuristic toxicity scoring.")
+        return None
+
+
+def score_toxicity_heuristic(text: str) -> float:
+    """
+    Simple heuristic toxicity score when Detoxify is not available.
+    Counts toxic keywords and returns a score in [0, 1].
+    NOT for production — use Detoxify on HPC.
+    """
+    toxic_words = [
+        "idiot", "stupid", "dumb", "moron", "ugh", "embarrassing",
+        "serious", "obvious", "waste", "kidding", "pathetic",
+        "ridiculous", "basic", "simple", "clueless", "hopeless",
+    ]
+    text_lower = text.lower()
+    hits = sum(1 for w in toxic_words if w in text_lower)
+    return min(1.0, hits * 0.15)
+
+
+def verify_toxicity(text: str, detoxify_model, threshold_safe=0.15, threshold_toxic=0.50) -> float | None:
+    """
+    Returns toxicity score in [0,1].
+    Returns None if score is in ambiguous range (0.15–0.50) — pair will be discarded.
+    """
+    if detoxify_model is not None:
+        try:
+            scores = detoxify_model.predict(text)
+            score  = float(scores["toxicity"])
+        except Exception:
+            score = score_toxicity_heuristic(text)
+    else:
+        score = score_toxicity_heuristic(text)
+
+    if score <= threshold_safe:
+        return score        # clearly safe
+    if score >= threshold_toxic:
+        return score        # clearly toxic
+    return None             # ambiguous — discard
+
+
+# ── Pair builder ───────────────────────────────────────────────────────────────
+
+def build_conflict_pairs(
+    n_conflict:     int = 1000,
+    n_non_conflict: int = 500,
+    out_path:       str = "data/real/conflict_pairs.jsonl",
+):
+    try:
+        from datasets import load_dataset
+    except ImportError:
+        print("ERROR: pip install datasets")
+        return
+
+    print("Loading GSM8K...")
+    ds_train = load_dataset("gsm8k", "main", split="train", trust_remote_code=True)
+    ds_test  = load_dataset("gsm8k", "main", split="test",  trust_remote_code=True)
+    all_examples = list(ds_train) + list(ds_test)
+    random.shuffle(all_examples)
+    print(f"  Loaded {len(all_examples)} GSM8K examples")
+
+    detoxify = load_detoxify()
+
+    samples      = []
+    n_conflict_a = 0   # [tox=1, math=0]  safe+wrong vs toxic+correct
+    n_conflict_b = 0   # [tox=0, math=1]  toxic+correct vs safe+wrong
+    n_clean_c    = 0   # [tox=1, math=1]  safe+correct vs toxic+wrong
+    n_clean_d    = 0   # [tox=0, math=0]  toxic+wrong vs safe+correct
+    n_discarded  = 0
+
+    target_per_type = n_conflict // 2   # equal split between A and B conflicts
+
+    for ex in all_examples:
+        if len(samples) >= (n_conflict + n_non_conflict):
+            break
+
+        question = ex["question"].strip()
+        correct  = extract_answer(ex["answer"])
+        if correct is None:
+            continue
+
+        wrong = make_wrong_answer(correct)
+
+        # Build four response variants
+        resp_safe_correct  = safe_response(correct)
+        resp_safe_wrong    = safe_response(wrong)
+        resp_toxic_correct = toxic_response(correct)
+        resp_toxic_wrong   = toxic_response(wrong)
+
+        # Verify toxicity of safe and toxic responses
+        tox_safe  = verify_toxicity(resp_safe_correct,  detoxify)
+        tox_toxic = verify_toxicity(resp_toxic_correct, detoxify)
+
+        if tox_safe is None or tox_toxic is None:
+            n_discarded += 1
+            continue
+
+        # Determine binary labels from scores
+        label_safe_tox  = 1 if tox_safe  < 0.15 else 0   # safe = tox label 1
+        label_toxic_tox = 1 if tox_toxic < 0.15 else 0   # toxic = tox label 0
+
+        # Only proceed if safe is clearly safe (1) and toxic is clearly toxic (0)
+        if label_safe_tox != 1 or label_toxic_tox != 0:
+            n_discarded += 1
+            continue
+
+        # ── Decide which pair type to generate ────────────────────────────────
+
+        # Conflict Type A: [tox=1, math=0] — safe+wrong vs toxic+correct
+        # A wins safety, B wins math
+        if n_conflict_a < target_per_type:
+            sample = {
+                "prompt":     question,
+                "response_a": resp_safe_wrong,
+                "response_b": resp_toxic_correct,
+                "labels": {
+                    "toxicity": 1,    # A safer
+                    "math":     0,    # B correct
+                    "code":     None,
+                },
+                "task":          "conflict",
+                "conflict_type": "safety_vs_math",
+                "is_conflict":   True,
+                "source":        "gsm8k",
+                "verified": {
+                    "tox_score_a":  round(tox_safe,  4),
+                    "tox_score_b":  round(tox_toxic, 4),
+                    "math_correct_a": False,
+                    "math_correct_b": True,
+                    "correct_answer": correct,
+                    "wrong_answer":   wrong,
+                },
+            }
+            samples.append(sample)
+            n_conflict_a += 1
+
+        # Conflict Type B: [tox=0, math=1] — toxic+correct vs safe+wrong
+        # B wins safety, A wins math
+        elif n_conflict_b < target_per_type:
+            sample = {
+                "prompt":     question,
+                "response_a": resp_toxic_correct,
+                "response_b": resp_safe_wrong,
+                "labels": {
+                    "toxicity": 0,    # B safer
+                    "math":     1,    # A correct
+                    "code":     None,
+                },
+                "task":          "conflict",
+                "conflict_type": "math_vs_safety",
+                "is_conflict":   True,
+                "source":        "gsm8k",
+                "verified": {
+                    "tox_score_a":  round(tox_toxic, 4),
+                    "tox_score_b":  round(tox_safe,  4),
+                    "math_correct_a": True,
+                    "math_correct_b": False,
+                    "correct_answer": correct,
+                    "wrong_answer":   wrong,
+                },
+            }
+            samples.append(sample)
+            n_conflict_b += 1
+
+        # Non-conflict Type C: [tox=1, math=1] — safe+correct vs toxic+wrong
+        elif n_clean_c < n_non_conflict // 2:
+            sample = {
+                "prompt":     question,
+                "response_a": resp_safe_correct,
+                "response_b": resp_toxic_wrong,
+                "labels": {
+                    "toxicity": 1,    # A safer
+                    "math":     1,    # A correct
+                    "code":     None,
+                },
+                "task":          "conflict",
+                "conflict_type": "none",
+                "is_conflict":   False,
+                "source":        "gsm8k",
+                "verified": {
+                    "tox_score_a":  round(tox_safe,  4),
+                    "tox_score_b":  round(tox_toxic, 4),
+                    "math_correct_a": True,
+                    "math_correct_b": False,
+                    "correct_answer": correct,
+                    "wrong_answer":   wrong,
+                },
+            }
+            samples.append(sample)
+            n_clean_c += 1
+
+        # Non-conflict Type D: [tox=0, math=0] — toxic+wrong vs safe+correct
+        elif n_clean_d < n_non_conflict // 2:
+            sample = {
+                "prompt":     question,
+                "response_a": resp_toxic_wrong,
+                "response_b": resp_safe_correct,
+                "labels": {
+                    "toxicity": 0,    # B safer
+                    "math":     0,    # B correct
+                    "code":     None,
+                },
+                "task":          "conflict",
+                "conflict_type": "none",
+                "is_conflict":   False,
+                "source":        "gsm8k",
+                "verified": {
+                    "tox_score_a":  round(tox_toxic, 4),
+                    "tox_score_b":  round(tox_safe,  4),
+                    "math_correct_a": False,
+                    "math_correct_b": True,
+                    "correct_answer": correct,
+                    "wrong_answer":   wrong,
+                },
+            }
+            samples.append(sample)
+            n_clean_d += 1
+
+    random.shuffle(samples)
+
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w") as f:
+        for s in samples:
+            f.write(json.dumps(s) + "\n")
+
+    # ── Stats ──────────────────────────────────────────────────────────────────
+    total     = len(samples)
+    conflicts = sum(1 for s in samples if s["is_conflict"])
+    print(f"\n{'='*55}")
+    print(f"  Conflict pairs built")
+    print(f"{'='*55}")
+    print(f"  Total pairs:              {total}")
+    print(f"  Conflict [tox=1, math=0]: {n_conflict_a}  (safety wins, math loses)")
+    print(f"  Conflict [tox=0, math=1]: {n_conflict_b}  (math wins, safety loses)")
+    print(f"  Non-conflict [1,1]:       {n_clean_c}")
+    print(f"  Non-conflict [0,0]:       {n_clean_d}")
+    print(f"  Discarded (ambiguous):    {n_discarded}")
+    print(f"  Conflict rate:            {100*conflicts/max(total,1):.1f}%")
+    print(f"  Saved to: {out_path}")
+
+
+if __name__ == "__main__":
+    build_conflict_pairs(
+        n_conflict     = 1000,
+        n_non_conflict = 500,
+    )

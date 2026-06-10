@@ -1,0 +1,31 @@
+#!/bin/bash
+#PBS -N v2_learned_weights
+#PBS -l walltime=04:00:00
+#PBS -l ncpus=4
+#PBS -l mem=16gb
+#PBS -l ngpus=1
+#PBS -j oe
+#PBS -o logs/v2_learned_weights.log
+
+set -e
+cd "$PBS_O_WORKDIR"
+
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate irlf
+
+mkdir -p logs \
+    outputs/checkpoints_v2_learned \
+    outputs/metrics_v2_learned \
+    outputs/plots_v2_learned \
+    outputs/failure_examples_v2_learned
+
+echo "=========================================="
+echo " V2 Learned Weights"
+echo " Start: $(date)"
+echo "=========================================="
+
+python main.py --config configs/v2_learned_weights.yaml --mode train
+python main.py --config configs/v2_learned_weights.yaml --mode evaluate --checkpoint outputs/checkpoints_v2_learned/best_model.pt
+python main.py --config configs/v2_learned_weights.yaml --mode analyze --checkpoint outputs/checkpoints_v2_learned/best_model.pt
+
+echo "Done: $(date)"

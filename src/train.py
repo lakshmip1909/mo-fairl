@@ -3,12 +3,19 @@ src/train.py
 
 Training loop for MO-FAIRL.
 
-Loss: masked BCE per objective.
-For each sample i and objective k:
-    if mask[i,k] is True:
-        loss += BCE(sigmoid(Δᵢᵏ), pᵢᵏ)
+Loss (from notes, Naive formulation):
+    L^k(r_hat_k) = -(1/N) * sum_i  log sigma( rho_i^k * delta_i^k )
 
-Total loss = Σₖ Lₖ  (only over non-null labels)
+where:
+    delta_i^k  = r_k(A) - r_k(B)          reward gap
+    rho_i^k   in {-1, +1}                 preference sign (from notes Ass 2)
+    mask_i^k   = True if label not null    (V1 has nulls; V2 has none)
+
+Total weighted loss (from notes):
+    L_w = sum_k  w^k * L^k
+
+w is taken from config["reward_weights"] — fixed for baseline.
+This means w weights the GRADIENTS, not just the final combined reward.
 """
 
 from __future__ import annotations
@@ -29,47 +36,46 @@ from src.utils import AverageMeter, save_checkpoint, load_checkpoint
 
 # ── Loss ─────────────────────────────────────────────────────────────────────
 
-def masked_bce_loss(
-    delta: torch.Tensor,
-    labels: torch.Tensor,
-    mask: torch.Tensor,
-    weights: torch.Tensor | None = None,
-):
-    valid = mask.float()
-
-    margin = labels * delta
-
-    loss_elem = -F.logsigmoid(margin) * valid
-
-    valid_counts = valid.sum(dim=0).clamp(min=1)
-
-    per_obj_loss = loss_elem.sum(dim=0) / valid_counts
-
-    if weights is None:
-        total_loss = per_obj_loss.sum()
-    else:
-        total_loss = (weights.to(delta.device) * per_obj_loss).sum()
-
-    return total_loss, per_obj_loss
-
+def masked_margin_loss(
+    delta:   torch.Tensor,  # [batch, K]  reward gap: r_k(A) - r_k(B)
+    rho:     torch.Tensor,  # [batch, K]  preference sign: {-1.0, +1.0}
+    mask:    torch.Tensor,  # [batch, K]  bool — False where label is null
+    weights: torch.Tensor,  # [K]         objective weights w^k from config
+) -> tuple[torch.Tensor, torch.Tensor]:
     """
+    Implements the loss from the notes exactly:
+
+        L^k = -(1/N_k) * sum_i  log sigma( rho_i^k * delta_i^k )
+
+    Total weighted loss:
+
+        L_w = sum_k  w^k * L^k
+
+    Args:
+        delta   : [batch, K]  r_k(A) - r_k(B)
+        rho     : [batch, K]  {-1, +1}  (rho_i^k from Ass 2)
+        mask    : [batch, K]  True where this objective applies
+        weights : [K]         w^k  (fixed for baseline)
+
     Returns:
-        total_loss:  scalar
-        per_obj_loss: [K]
+        total_loss   : scalar  — L_w = sum_k w^k * L^k
+        per_obj_loss : [K]    — unweighted L^k per objective (for logging)
     """
-    prob = torch.sigmoid(delta)  # [batch, K]
+    # -log sigma(rho * delta)  element-wise — numerically stable via softplus:
+    #   -log sigma(x) = log(1 + exp(-x)) = softplus(-x)
+    margin = rho * delta                                        # [batch, K]
+    loss_elem = F.softplus(-margin)                            # [batch, K]
 
-    # BCE element-wise (no reduction)
-    bce = F.binary_cross_entropy(prob, labels.clamp(0, 1), reduction="none")  # [batch, K]
+    # Zero out null objectives (V1 has nulls; V2 has none, but keep general)
+    loss_elem = loss_elem * mask.float()                       # [batch, K]
 
-    # Zero out where mask is False (null labels)
-    bce = bce * mask.float()
+    # Per-objective mean over valid samples only
+    valid_counts = mask.float().sum(dim=0).clamp(min=1)        # [K]
+    per_obj_loss = loss_elem.sum(dim=0) / valid_counts         # [K]  unweighted L^k
 
-    # Per-objective mean (only over valid samples)
-    valid_counts = mask.float().sum(dim=0).clamp(min=1)  # [K]
-    per_obj_loss = bce.sum(dim=0) / valid_counts          # [K]
+    # Weighted total: L_w = sum_k w^k * L^k
+    total_loss = (weights * per_obj_loss).sum()
 
-    total_loss = per_obj_loss.sum()
     return total_loss, per_obj_loss
 
 
@@ -81,9 +87,8 @@ def train_epoch(
     optimizer: torch.optim.Optimizer,
     device:    torch.device,
     grad_clip: float,
-    weights:   torch.Tensor | None = None,
+    weights:   torch.Tensor,        # [K] objective weights w^k
 ) -> dict:
-
     model.train()
     meters = {
         "loss":   AverageMeter(),
@@ -91,14 +96,14 @@ def train_epoch(
     }
 
     for batch in loader:
-        enc_a  = batch["enc_a"].to(device)
-        enc_b  = batch["enc_b"].to(device)
-        labels = batch["labels"].to(device)
-        mask   = batch["mask"].to(device)
+        enc_a   = batch["enc_a"].to(device)
+        enc_b   = batch["enc_b"].to(device)
+        rho     = batch["rho"].to(device)    # {-1, +1}  [batch, K]
+        mask    = batch["mask"].to(device)
 
         delta = model.get_reward_gap(enc_a, enc_b)  # [batch, K]
 
-        loss, per_obj = masked_bce_loss(delta, labels, mask, weights)
+        loss, per_obj = masked_margin_loss(delta, rho, mask, weights)
 
         optimizer.zero_grad()
         loss.backward()
@@ -118,12 +123,11 @@ def train_epoch(
 
 @torch.no_grad()
 def val_epoch(
-    model:  MultiObjectiveRewardModel,
-    loader: DataLoader,
-    device: torch.device,
-    weights: torch.Tensor | None = None,
+    model:   MultiObjectiveRewardModel,
+    loader:  DataLoader,
+    device:  torch.device,
+    weights: torch.Tensor,          # [K] objective weights w^k
 ) -> dict:
-
     model.eval()
     meters = {
         "loss":   AverageMeter(),
@@ -132,16 +136,17 @@ def val_epoch(
     }
 
     for batch in loader:
-        enc_a  = batch["enc_a"].to(device)
-        enc_b  = batch["enc_b"].to(device)
-        labels = batch["labels"].to(device)
-        mask   = batch["mask"].to(device)
+        enc_a   = batch["enc_a"].to(device)
+        enc_b   = batch["enc_b"].to(device)
+        rho     = batch["rho"].to(device)    # {-1, +1}  [batch, K]
+        mask    = batch["mask"].to(device)
 
         delta = model.get_reward_gap(enc_a, enc_b)  # [batch, K]
-        loss, per_obj = masked_bce_loss(delta, labels, mask, weights)
+        loss, per_obj = masked_margin_loss(delta, rho, mask, weights)
 
-        # Accuracy: correct when sign(delta) == label
-        correct = ((labels * delta) > 0).float() * mask.float()
+        # Accuracy: correct when rho and delta have the same sign
+        # i.e. rho * delta > 0  <=>  the model ranks the preferred response higher
+        correct = ((rho * delta) > 0).float() * mask.float()  # [batch, K]
         valid   = mask.float()
 
         bs = enc_a.size(0)
@@ -171,6 +176,14 @@ def train(
     ckpt_dir = Path(cfg["checkpoint_dir"])
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
+    # Build objective weight vector w from config (fixed for baseline)
+    weights_cfg = config["reward_weights"]
+    from src.reward_model import OBJECTIVES as _OBJS
+    weights = torch.tensor(
+        [weights_cfg[o] for o in _OBJS], dtype=torch.float32, device=device
+    )
+    print(f"  Objective weights: { {o: round(weights_cfg[o],3) for o in _OBJS} }")
+
     optimizer = AdamW(
         model.parameters(),
         lr           = cfg["learning_rate"],
@@ -190,23 +203,11 @@ def train(
     print(f"\n{'='*60}")
     print(f"  Training for {cfg['num_epochs']} epochs")
     print(f"  Train batches: {len(train_dl)}  |  Val batches: {len(val_dl)}")
-
-    weights_cfg = cfg.get("reward_weights", {
-        "toxicity": 1/3,
-        "math": 1/3,
-        "code": 1/3,
-    })
-    weights = torch.tensor(
-        [weights_cfg[obj] for obj in OBJECTIVES],
-        dtype=torch.float32,
-        device=device,
-    )
-    print(f"  Objective weights: {weights.detach().cpu().tolist()}")
     print(f"{'='*60}\n")
 
     for epoch in range(1, cfg["num_epochs"] + 1):
         train_metrics = train_epoch(model, train_dl, optimizer, device, cfg["grad_clip"], weights)
-        val_metrics   = val_epoch(model, val_dl, device,weights)
+        val_metrics   = val_epoch(model, val_dl, device, weights)
         scheduler.step()
 
         # Print

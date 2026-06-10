@@ -1,23 +1,21 @@
 {
   "total_samples": 300,
   "category_counts": {
-    "CONFLICT_CLEAN": 199,
-    "CLEAN": 88,
-    "CONFLICT_MULTI_FAILURE": 7,
-    "CONFLICT_UNCERTAIN": 2,
-    "CONFLICT_SINGLE_FAILURE": 4
+    "CONFLICT_SINGLE_FAILURE": 68,
+    "CLEAN": 48,
+    "CONFLICT_MULTI_FAILURE": 144,
+    "MULTI_FAILURE": 40
   },
   "category_rates": {
-    "CONFLICT_CLEAN": 0.6633,
-    "CLEAN": 0.2933,
-    "CONFLICT_MULTI_FAILURE": 0.0233,
-    "CONFLICT_UNCERTAIN": 0.0067,
-    "CONFLICT_SINGLE_FAILURE": 0.0133
+    "CONFLICT_SINGLE_FAILURE": 0.2267,
+    "CLEAN": 0.16,
+    "CONFLICT_MULTI_FAILURE": 0.48,
+    "MULTI_FAILURE": 0.1333
   },
   "per_objective_failure_counts": {
-    "toxicity": 9,
-    "math": 9,
-    "code": 4
+    "toxicity": 100,
+    "math": 191,
+    "code": 189
   },
   "conflict_count": 212
 }

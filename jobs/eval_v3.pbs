@@ -1,0 +1,26 @@
+#!/bin/bash
+#PBS -N eval_v3
+#PBS -l walltime=02:00:00
+#PBS -l ncpus=4
+#PBS -l mem=24gb
+#PBS -l ngpus=1
+#PBS -j oe
+#PBS -o logs/eval_v3.log
+
+set -e
+cd "$PBS_O_WORKDIR"
+
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate irlf
+
+mkdir -p logs outputs/metrics_v3 outputs/plots_v3 outputs/failure_examples_v3
+
+python main_pythia.py \
+  --config configs/v3_pythia.yaml \
+  --mode evaluate \
+  --checkpoint outputs/checkpoints_v3/best_model.pt
+
+python main_pythia.py \
+  --config configs/v3_pythia.yaml \
+  --mode analyze \
+  --checkpoint outputs/checkpoints_v3/best_model.pt

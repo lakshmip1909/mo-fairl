@@ -1,0 +1,19 @@
+#!/bin/bash
+#PBS -N eval_weight_tox
+#PBS -l walltime=00:30:00
+#PBS -l ncpus=4
+#PBS -l mem=16gb
+#PBS -l ngpus=1
+#PBS -j oe
+#PBS -o logs/eval_weight_tox.log
+
+set -e
+cd "$PBS_O_WORKDIR"
+
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate irlf
+
+python main_conflict.py \
+  --config configs/weight_tox.yaml \
+  --mode evaluate \
+  --checkpoint outputs/checkpoints_weight_tox/best_model.pt

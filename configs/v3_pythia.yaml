@@ -1,0 +1,61 @@
+# MO-FAIRL Version 3 Configuration
+# Pythia-410M encoder + real datasets (civil_comments, GSM8K, HumanEval)
+
+# ── Data ──────────────────────────────────────────────────────────────────────
+data:
+  toxicity_path: data/real/toxicity_pairs.jsonl
+  math_path:     data/real/math_pairs.jsonl
+  code_path:     data/real/code_pairs.jsonl
+  combined_path: data/real/combined_pairs_v3.jsonl
+  train_split:   0.8
+  val_split:     0.1
+  test_split:    0.1
+  seed:          42
+
+# ── Model ─────────────────────────────────────────────────────────────────────
+model:
+  encoder:         EleutherAI/pythia-410m
+  hidden_dim:      256
+  dropout:         0.1
+  num_objectives:  3
+  objective_names: [toxicity, math, code]
+  freeze_encoder:  true        # freeze Pythia, only train projection + heads
+  max_length:      512
+
+# ── Training ──────────────────────────────────────────────────────────────────
+training:
+  batch_size:       8           # small: Pythia-410M is large
+  grad_accum_steps: 4           # effective batch = 32
+  num_epochs:       20
+  learning_rate:    1.0e-4
+  weight_decay:     1.0e-4
+  warmup_steps:     200
+  grad_clip:        1.0
+  checkpoint_dir:   outputs/checkpoints_v3
+  save_every:       5
+  device:           cuda
+
+# ── Reward weights ─────────────────────────────────────────────────────────────
+reward_weights:
+  toxicity: 0.333
+  math:     0.333
+  code:     0.334
+
+# ── Evaluation ────────────────────────────────────────────────────────────────
+evaluation:
+  metrics_dir:     outputs/metrics_v3
+  plots_dir:       outputs/plots_v3
+  uncertainty_eps: 0.1
+
+# ── Failure analysis ──────────────────────────────────────────────────────────
+failure_analysis:
+  output_dir: outputs/failure_examples_v3
+  epsilon:    0.1
+
+# ── PBS / HPC ─────────────────────────────────────────────────────────────────
+hpc:
+  walltime: 08:00:00
+  ncpus:    8
+  mem:      32gb
+  gpu:      1
+  queue:    gpu

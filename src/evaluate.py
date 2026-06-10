@@ -43,26 +43,26 @@ def collect_predictions(
     """
     model.eval()
     all_deltas  = []
-    all_labels  = []
+    all_rho     = []
     all_masks   = []
     all_tasks   = []
 
     for batch in loader:
         enc_a  = batch["enc_a"].to(device)
         enc_b  = batch["enc_b"].to(device)
-        labels = batch["labels"]
+        rho    = batch["rho"]      # {-1, +1}  [batch, K]
         mask   = batch["mask"]
 
         delta = model.get_reward_gap(enc_a, enc_b).cpu()  # [batch, K]
 
         all_deltas.append(delta)
-        all_labels.append(labels)
+        all_rho.append(rho)
         all_masks.append(mask)
         all_tasks.extend(batch["task"])
 
     return {
         "deltas":  torch.cat(all_deltas,  dim=0).numpy(),  # [N, K]
-        "labels":  torch.cat(all_labels,  dim=0).numpy(),  # [N, K]
+        "rho":     torch.cat(all_rho,     dim=0).numpy(),  # [N, K]  {-1,+1}
         "masks":   torch.cat(all_masks,   dim=0).numpy(),  # [N, K] bool
         "tasks":   all_tasks,
         "weights": weights.numpy(),
@@ -76,7 +76,7 @@ def compute_metrics(preds: dict) -> dict:
     Compute per-objective and combined metrics.
     """
     deltas  = preds["deltas"]   # [N, K]
-    labels  = preds["labels"]   # [N, K]
+    rho     = preds["rho"]      # [N, K]  {-1, +1}
     masks   = preds["masks"]    # [N, K]
     weights = preds["weights"]  # [K]
 
@@ -88,15 +88,19 @@ def compute_metrics(preds: dict) -> dict:
             print(f"  WARNING: no valid samples for objective {obj}")
             continue
 
-        rho = labels[valid_idx, k].astype(int)
+        rho_k  = rho[valid_idx, k]           # {-1, +1}
         y_gap  = deltas[valid_idx, k]
-        # Convert rho {-1,+1} back to binary only for metrics
-        y_true = (rho > 0).astype(int)
-        y_prob = 1 / (1 + np.exp(-y_gap))   # P(A preferred)
+
+        # Convert rho back to {0,1} for sklearn metrics
+        y_true = ((rho_k + 1) / 2).astype(int)   # -1->0, +1->1
+
+        # Predicted probability that A is preferred: sigma(delta)
+        y_prob = 1 / (1 + np.exp(-y_gap))
+
+        # Correct when rho and delta have same sign (rho*delta > 0)
         y_pred = (y_gap > 0).astype(int)
 
-        # Correct iff rho * gap > 0
-        acc = np.mean((rho * y_gap) > 0)
+        acc = accuracy_score(y_true, y_pred)
         f1  = f1_score(y_true, y_pred, zero_division=0)
         try:
             auc = roc_auc_score(y_true, y_prob)
@@ -123,15 +127,14 @@ def compute_metrics(preds: dict) -> dict:
     # Combined reward: R_w(A) - R_w(B) = Σₖ wₖ Δᵏ
     combined_delta = (deltas * weights[None, :]).sum(axis=1)  # [N]
 
-    # Use samples where at least one objective has a label
+    # Combined: majority vote over valid objectives using rho convention
     any_valid = masks.any(axis=1)
-    # For combined, use majority-vote label (or mean label > 0.5)
-    label_means = np.where(masks, labels, np.nan)
-    # labels are rho {-1,+1}; combined preference is sign of average rho
-    combined_label = np.nanmean(label_means, axis=1)
-    combined_binary = (combined_label > 0).astype(int)
+    # rho is {-1,+1}; mean > 0 means more objectives prefer A
+    rho_means = np.where(masks, rho, np.nan)
+    combined_rho_mean = np.nanmean(rho_means, axis=1)    # [N]
+    combined_binary = (combined_rho_mean > 0).astype(int)  # majority prefer A
 
-    valid_combined = any_valid & ~np.isnan(combined_label)
+    valid_combined = any_valid & ~np.isnan(combined_rho_mean)
     y_true_c = combined_binary[valid_combined]
     y_pred_c = (combined_delta[valid_combined] > 0).astype(int)
 

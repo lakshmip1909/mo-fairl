@@ -1,0 +1,58 @@
+# MO-FAIRL Version 2 Configuration
+# True multi-objective pairs — every sample has all 3 labels, no nulls.
+
+# ── Data ──────────────────────────────────────────────────────────────────────
+data:
+  toxicity_path: data/toxicity_pairs.jsonl       # V1 (kept for reference)
+  math_path:     data/math_pairs.jsonl           # V1 (kept for reference)
+  code_path:     data/code_pairs.jsonl           # V1 (kept for reference)
+  combined_path: data/combined_pairs_v2.jsonl    # V2 dataset ← key change
+  train_split:   0.8
+  val_split:     0.1
+  test_split:    0.1
+  seed:          42
+
+# ── Model ─────────────────────────────────────────────────────────────────────
+model:
+  encoder:        sentence-transformers/all-MiniLM-L6-v2
+  hidden_dim:     256
+  dropout:        0.1
+  num_objectives: 3
+  objective_names: [toxicity, math, code]
+
+# ── Training ──────────────────────────────────────────────────────────────────
+training:
+  batch_size:    32
+  num_epochs:    25                  # slightly more than V1
+  learning_rate: 2.0e-4
+  weight_decay:  1.0e-4
+  warmup_steps:  100
+  grad_clip:     1.0
+  checkpoint_dir: outputs/checkpoints_v2_learned
+  save_every:    5
+  device:        cuda
+
+# ── Reward combination weights (baseline: uniform) ────────────────────────────
+reward_weights:
+  toxicity: 0.333
+  math:     0.333
+  code:     0.334
+
+# ── Evaluation ────────────────────────────────────────────────────────────────
+evaluation:
+  metrics_dir:      outputs/metrics_v2_learned
+  plots_dir:        outputs/plots_v2_learned
+  uncertainty_eps:  0.1
+
+# ── Failure analysis ──────────────────────────────────────────────────────────
+failure_analysis:
+  output_dir:    outputs/failure_examples_v2_learned
+  epsilon:       0.1
+
+# ── PBS / HPC ─────────────────────────────────────────────────────────────────
+hpc:
+  walltime:      04:00:00
+  ncpus:         4
+  mem:           16gb
+  gpu:           1
+  queue:         gpu

@@ -17,11 +17,10 @@ echo "  Start    : $(date)"
 echo "=========================================="
 
 # Load modules (adjust for your HPC)
-module load anaconda3/personal 2>/dev/null || true
+module load python/3.11 2>/dev/null || true
 
 # Activate virtual environment
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate irlf
+source venv/bin/activate
 
 mkdir -p logs data
 

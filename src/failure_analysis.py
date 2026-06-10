@@ -32,8 +32,8 @@ from src.reward_model import MultiObjectiveRewardModel, OBJECTIVES, K
 # ── Categorisation ────────────────────────────────────────────────────────────
 
 def categorise_sample(
-    deltas:  np.ndarray,   # [K]
-    labels:  np.ndarray,   # [K]  (may contain NaN)
+    deltas:  np.ndarray,   # [K]  reward gap r_k(A) - r_k(B)
+    rho:     np.ndarray,   # [K]  {-1.0, +1.0}  preference sign
     mask:    np.ndarray,   # [K]  bool
     epsilon: float = 0.1,
 ) -> dict:
@@ -57,26 +57,29 @@ def categorise_sample(
             result["objectives"][obj] = None  # irrelevant
             continue
 
-        delta = float(deltas[k])
-        rho = int(labels[k])
-        label = 1 if rho > 0 else 0
-        pred  = 1 if delta > 0 else 0
-        fail  = (rho * delta) <= 0
-        unc   = abs(delta) < epsilon
+        delta   = float(deltas[k])
+        rho_k   = float(rho[k])                 # {-1.0, +1.0}
+        # Correct when rho and delta share sign: rho * delta > 0
+        correct = (rho_k * delta) > 0
+        fail    = not correct
+        unc     = abs(delta) < epsilon
+        # Convert rho back to readable {0,1} for display
+        label_display = 1 if rho_k > 0 else 0
 
         result["objectives"][obj] = {
-            "delta":     round(delta, 4),
-            "label":     label,
-            "predicted": pred,
-            "failed":    fail,
-            "uncertain": unc,
+            "delta":      round(delta, 4),
+            "rho":        rho_k,
+            "label":      label_display,         # 1=A preferred, 0=B preferred
+            "correct":    correct,
+            "failed":     fail,
+            "uncertain":  unc,
         }
 
         if fail:
             failures += 1
         if unc:
             uncertain += 1
-        valid_labels.append(label)
+        valid_labels.append(label_display)
 
     result["n_failures"]  = failures
     result["n_uncertain"] = uncertain
@@ -134,14 +137,14 @@ def run_failure_analysis(
     for batch in loader:
         enc_a  = batch["enc_a"].to(device)
         enc_b  = batch["enc_b"].to(device)
-        labels = batch["labels"].numpy()
+        rho    = batch["rho"].numpy()    # {-1,+1}  [batch, K]
         masks  = batch["mask"].numpy()
         tasks  = batch["task"]
 
         deltas = model.get_reward_gap(enc_a, enc_b).cpu().numpy()  # [B, K]
 
         for b in range(deltas.shape[0]):
-            cat = categorise_sample(deltas[b], labels[b], masks[b], epsilon)
+            cat = categorise_sample(deltas[b], rho[b], masks[b], epsilon)
             all_categories.append(cat["category"])
 
             # Get original sample text if available
@@ -153,6 +156,7 @@ def run_failure_analysis(
                 "response_a": orig.get("response_a", "N/A")[:200],
                 "response_b": orig.get("response_b", "N/A")[:200],
                 "analysis":   cat,
+                "rho_raw":    rho[b].tolist(),
             }
 
             # Per-objective failures

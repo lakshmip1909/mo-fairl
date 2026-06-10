@@ -15,9 +15,8 @@ echo "  Job ID   : $PBS_JOBID"
 echo "  Start    : $(date)"
 echo "=========================================="
 
-module load anaconda3/personal 2>/dev/null || true
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate irlf
+module load python/3.11 2>/dev/null || true
+source venv/bin/activate
 mkdir -p logs data
 
 echo "Generating true multi-objective pairs..."

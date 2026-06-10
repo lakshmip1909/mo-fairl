@@ -1,0 +1,15 @@
+#!/bin/bash
+#PBS -N gen_conflicts
+#PBS -l walltime=00:30:00
+#PBS -l ncpus=2
+#PBS -l mem=8gb
+#PBS -j oe
+#PBS -o logs/generate_conflicts_fast.log
+
+set -e
+cd "$PBS_O_WORKDIR"
+
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate irlf
+
+python scripts/real/build_conflict_pairs.py

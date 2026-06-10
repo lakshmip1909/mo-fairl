@@ -56,8 +56,3 @@ hpc:
   mem:           16gb
   gpu:           1
   queue:         gpu
-
-reward_weights:
-  toxicity: 0.333333
-  math: 0.333333
-  code: 0.333333

@@ -1,2 +1,4 @@
+outputs/
+logs/
+*.pt
 __pycache__/
-*.pyc

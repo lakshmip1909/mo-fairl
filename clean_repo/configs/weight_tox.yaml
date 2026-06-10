@@ -1,0 +1,68 @@
+# MO-FAIRL Conflict Configuration
+# Pythia-410M + real GSM8K conflict pairs + learnable w_phi
+
+# ── Data ──────────────────────────────────────────────────────────────────────
+data:
+  combined_path: data/real/weight_recovery_tox.jsonl
+  train_split:   0.8
+  val_split:     0.1
+  test_split:    0.1
+  seed:          42
+
+# ── Model ─────────────────────────────────────────────────────────────────────
+model:
+  encoder:         EleutherAI/pythia-410m
+  hidden_dim:      256
+  dropout:         0.1
+  num_objectives:  3
+  objective_names: [toxicity, math, code]
+  freeze_encoder:  true
+  max_length:      512
+
+# ── Training ──────────────────────────────────────────────────────────────────
+training:
+  batch_size:       8
+  grad_accum_steps: 4           # effective batch = 32
+  num_epochs:       25
+  learning_rate:    1.0e-4      # for reward heads
+  # w_phi gets 10x smaller LR (set in train_conflict.py)
+  weight_decay:     1.0e-4
+  warmup_steps:     100
+  grad_clip:        1.0
+  checkpoint_dir:   outputs/checkpoints_weight_tox
+  save_every:       5
+  device:           cuda
+
+# ── Loss ──────────────────────────────────────────────────────────────────────
+# L_total = L_per_obj + lambda_global * L_global
+# lambda_global=0: only per-objective loss (ablation)
+# lambda_global=1: equal weight (default)
+# lambda_global=2: emphasise global preference
+lambda_global: 1.0
+lambda_fail: 0.5
+lambda_dro: 0.5
+
+# ── Reward weights (initial, will be overridden by learned w_phi) ─────────────
+reward_weights:
+  toxicity: 0.333
+  math:     0.333
+  code:     0.334
+
+# ── Evaluation ────────────────────────────────────────────────────────────────
+evaluation:
+  metrics_dir:     outputs/metrics_weight_tox
+  plots_dir:       outputs/plots_weight_tox
+  uncertainty_eps: 0.1
+
+# ── Failure analysis ──────────────────────────────────────────────────────────
+failure_analysis:
+  output_dir: outputs/failure_examples_weight_tox
+  epsilon:    0.1
+
+# ── PBS / HPC ─────────────────────────────────────────────────────────────────
+hpc:
+  walltime: 08:00:00
+  ncpus:    8
+  mem:      32gb
+  gpu:      1
+  queue:    gpu

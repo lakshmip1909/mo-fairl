@@ -1,0 +1,55 @@
+#!/bin/bash
+#PBS -N mo_fairl_v3_pythia
+#PBS -l walltime=08:00:00
+#PBS -l ncpus=8
+#PBS -l mem=32gb
+#PBS -l ngpus=1
+#PBS -j oe
+#PBS -o logs/pipeline_v3.log
+
+set -e
+cd "$PBS_O_WORKDIR"
+
+echo "=========================================="
+echo "  MO-FAIRL V3: Pythia-410M + Real Data"
+echo "  Job ID   : $PBS_JOBID"
+echo "  Node     : $(hostname)"
+echo "  Start    : $(date)"
+echo "=========================================="
+
+module load python/3.11 2>/dev/null || true
+module load cuda/12.1   2>/dev/null || true
+source venv/bin/activate
+
+mkdir -p logs data/real \
+    outputs/checkpoints_v3 \
+    outputs/metrics_v3 \
+    outputs/plots_v3 \
+    outputs/failure_examples_v3
+
+echo "--- GPU Info ---"
+nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>/dev/null || echo "No GPU info"
+
+echo ""
+echo "--- Building real datasets ---"
+python scripts/real/build_toxicity_pairs.py
+python scripts/real/build_math_pairs.py
+python scripts/real/build_code_pairs.py
+python scripts/real/combine_real_data.py
+
+echo ""
+echo "--- Training Pythia-410M reward model ---"
+python main_pythia.py --config configs/v3_pythia.yaml --mode train
+
+echo ""
+echo "--- Evaluating ---"
+python main_pythia.py --config configs/v3_pythia.yaml --mode evaluate
+
+echo ""
+echo "--- Failure analysis ---"
+python main_pythia.py --config configs/v3_pythia.yaml --mode analyze
+
+echo ""
+echo "=========================================="
+echo "  V3 pipeline complete: $(date)"
+echo "=========================================="

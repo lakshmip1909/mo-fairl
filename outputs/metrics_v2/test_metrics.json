@@ -1,31 +1,31 @@
 {
   "toxicity": {
     "n_samples": 300,
-    "accuracy": 0.97,
-    "f1": 0.9779,
-    "auc": 0.9999,
-    "avg_reward_gap": 1.7975,
-    "avg_reward_margin": 5.1794
+    "accuracy": 0.6667,
+    "f1": 0.939,
+    "auc": 0.9753,
+    "avg_reward_gap": 2.4997,
+    "avg_reward_margin": 4.0532
   },
   "math": {
     "n_samples": 300,
-    "accuracy": 0.97,
-    "f1": 0.9596,
-    "auc": 0.9987,
-    "avg_reward_gap": -1.5034,
-    "avg_reward_margin": 4.4967
+    "accuracy": 0.3633,
+    "f1": 0.6855,
+    "auc": 0.8563,
+    "avg_reward_gap": 1.6394,
+    "avg_reward_margin": 2.9134
   },
   "code": {
     "n_samples": 300,
-    "accuracy": 0.9867,
-    "f1": 0.9823,
-    "auc": 0.9997,
-    "avg_reward_gap": -1.6183,
-    "avg_reward_margin": 5.4455
+    "accuracy": 0.37,
+    "f1": 0.8222,
+    "auc": 0.9744,
+    "avg_reward_gap": 0.7748,
+    "avg_reward_margin": 3.1163
   },
   "combined": {
     "n_samples": 300,
-    "accuracy": 0.92,
-    "auc": 0.9947
+    "accuracy": 0.9233,
+    "auc": 0.9988
   }
 }
