@@ -4,24 +4,28 @@
 #PBS -l walltime=08:00:00
 #PBS -q v1_gpu72
 #PBS -j oe
-#PBS -o /rds/general/user/ls1925/home/gsm8k_nonidentifiability/logs/gsm8k_concat_linear.log
+#PBS -o logs/gsm8k_concat_pipeline.log
 
-cd /rds/general/user/ls1925/home/gsm8k_nonidentifiability
+cd "$PBS_O_WORKDIR"
 
-source /rds/general/user/ls1925/home/miniconda3/etc/profile.d/conda.sh
+source ~/.bashrc
 conda activate irlf
 
+mkdir -p logs data results plots models
+
 echo "========================================"
-echo "GSM8K concat-only linear reward"
+echo "GSM8K reward non-identifiability pipeline"
 echo "Job ID: $PBS_JOBID"
 echo "Start: $(date)"
 echo "Directory: $(pwd)"
 echo "========================================"
 
-echo "Step 1: Extract concat-only features"
-python scripts/20_extract_concat_features.py
+python scripts/00_generate_base_pairs.py
+python scripts/01_build_filtered_hard_pairs.py
+python scripts/02_extract_concat_features.py
+python scripts/03_train_eval_concat.py
+python scripts/04_analyse_good_poor_groups.py
 
-echo "Step 2: Train/evaluate concat-only linear rewards"
-python scripts/21_train_eval_concat.py
-
+echo "========================================"
 echo "Done: $(date)"
+echo "========================================"
