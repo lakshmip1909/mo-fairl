@@ -1,0 +1,27 @@
+#!/bin/bash
+#PBS -N gsm8k_concat
+#PBS -l select=1:ncpus=8:mem=64gb:ngpus=1
+#PBS -l walltime=08:00:00
+#PBS -q v1_gpu72
+#PBS -j oe
+#PBS -o /rds/general/user/ls1925/home/gsm8k_nonidentifiability/logs/gsm8k_concat_linear.log
+
+cd /rds/general/user/ls1925/home/gsm8k_nonidentifiability
+
+source /rds/general/user/ls1925/home/miniconda3/etc/profile.d/conda.sh
+conda activate irlf
+
+echo "========================================"
+echo "GSM8K concat-only linear reward"
+echo "Job ID: $PBS_JOBID"
+echo "Start: $(date)"
+echo "Directory: $(pwd)"
+echo "========================================"
+
+echo "Step 1: Extract concat-only features"
+python scripts/20_extract_concat_features.py
+
+echo "Step 2: Train/evaluate concat-only linear rewards"
+python scripts/21_train_eval_concat.py
+
+echo "Done: $(date)"
