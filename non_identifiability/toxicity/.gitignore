@@ -1,0 +1,12 @@
+__pycache__/
+*.pt
+*.pkl
+*.log
+*.out
+*.err
+*.zip
+data/raw/
+data/processed/
+data/features/
+models/
+logs/

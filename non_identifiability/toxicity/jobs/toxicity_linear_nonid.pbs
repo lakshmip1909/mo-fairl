@@ -1,0 +1,25 @@
+#!/bin/bash
+#PBS -N tox_nonid
+#PBS -l select=1:ncpus=8:mem=64gb:ngpus=1
+#PBS -l walltime=08:00:00
+#PBS -q v1_gpu72
+#PBS -j oe
+#PBS -o /rds/general/user/ls1925/home/toxicity_nonidentifiability_final/logs/toxicity_linear_nonid.log
+
+cd /rds/general/user/ls1925/home/toxicity_nonidentifiability_final
+
+source /rds/general/user/ls1925/home/miniconda3/etc/profile.d/conda.sh
+conda activate irlf
+
+echo "========================================"
+echo "Toxicity response-only reward non-identifiability"
+echo "Job ID: $PBS_JOBID"
+echo "Start: $(date)"
+echo "Directory: $(pwd)"
+echo "========================================"
+
+python scripts/01_extract_response_features.py
+python scripts/02_train_eval_toxicity_rewards.py
+python scripts/03_analyse_toxicity_groups.py
+
+echo "Done: $(date)"
