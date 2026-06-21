@@ -1,0 +1,44 @@
+#!/bin/bash
+#PBS -N code_pilot
+#PBS -l select=1:ncpus=8:mem=64gb:ngpus=1
+#PBS -l walltime=12:00:00
+#PBS -q v1_gpu72
+#PBS -j oe
+#PBS -o logs/code_mbpp_pilot.log
+
+cd /rds/general/user/ls1925/home/code_nonidentifiability_final
+
+source /rds/general/user/ls1925/home/miniconda3/etc/profile.d/conda.sh
+conda activate irlf
+
+mkdir -p logs
+
+echo "========================================"
+echo "Code MBPP pilot"
+echo "Job ID: $PBS_JOBID"
+echo "Start: $(date)"
+echo "Directory: $(pwd)"
+echo "========================================"
+
+for RUN in mbpp_random mbpp_nn_k1 mbpp_nn_k10 mbpp_nn_k50
+do
+    echo "----------------------------------------"
+    echo "Running $RUN"
+    echo "----------------------------------------"
+
+    if [ "$RUN" = "mbpp_random" ]; then
+        python scripts/00_build_mbpp_pairs.py --run_name "$RUN" --strategy random --k 10
+    elif [ "$RUN" = "mbpp_nn_k1" ]; then
+        python scripts/00_build_mbpp_pairs.py --run_name "$RUN" --strategy nn --k 1
+    elif [ "$RUN" = "mbpp_nn_k10" ]; then
+        python scripts/00_build_mbpp_pairs.py --run_name "$RUN" --strategy nn --k 10
+    elif [ "$RUN" = "mbpp_nn_k50" ]; then
+        python scripts/00_build_mbpp_pairs.py --run_name "$RUN" --strategy nn --k 50
+    fi
+
+    python scripts/01_extract_concat_features.py --run_name "$RUN"
+    python scripts/02_train_eval_code_rewards.py --run_name "$RUN" --pilot
+    python scripts/03_analyse_code_groups.py --run_name "$RUN"
+done
+
+echo "Done: $(date)"
