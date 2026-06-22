@@ -6,40 +6,28 @@
 #PBS -j oe
 #PBS -o logs/code_mbpp_full.log
 
-cd /rds/general/user/ls1925/home/code_nonidentifiability_final
+cd "$PBS_O_WORKDIR"
 
-source /rds/general/user/ls1925/home/miniconda3/etc/profile.d/conda.sh
+source ~/.bashrc
 conda activate irlf
 
-mkdir -p logs
-
-RUN=${RUN_NAME:-mbpp_nn_k10}
+mkdir -p logs data results plots models
 
 echo "========================================"
-echo "Code MBPP full run"
-echo "Run name: $RUN"
+echo "MBPP code reward non-identifiability pipeline"
+echo "Run name: mbpp_random"
 echo "Job ID: $PBS_JOBID"
 echo "Start: $(date)"
 echo "Directory: $(pwd)"
 echo "========================================"
 
-if [ ! -f "data/features/$RUN/train_features.pt" ]; then
-    if [ "$RUN" = "mbpp_random" ]; then
-        python scripts/00_build_mbpp_pairs.py --run_name "$RUN" --strategy random --k 10
-    elif [ "$RUN" = "mbpp_nn_k1" ]; then
-        python scripts/00_build_mbpp_pairs.py --run_name "$RUN" --strategy nn --k 1
-    elif [ "$RUN" = "mbpp_nn_k10" ]; then
-        python scripts/00_build_mbpp_pairs.py --run_name "$RUN" --strategy nn --k 10
-    elif [ "$RUN" = "mbpp_nn_k50" ]; then
-        python scripts/00_build_mbpp_pairs.py --run_name "$RUN" --strategy nn --k 50
-    else
-        python scripts/00_build_mbpp_pairs.py --run_name "$RUN" --strategy nn --k 10
-    fi
+RUN=mbpp_random
 
-    python scripts/01_extract_concat_features.py --run_name "$RUN"
-fi
-
+python scripts/00_build_mbpp_pairs.py --run_name "$RUN" --strategy random --k 10
+python scripts/01_extract_concat_features.py --run_name "$RUN"
 python scripts/02_train_eval_code_rewards.py --run_name "$RUN"
 python scripts/03_analyse_code_groups.py --run_name "$RUN"
 
+echo "========================================"
 echo "Done: $(date)"
+echo "========================================"

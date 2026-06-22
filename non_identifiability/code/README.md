@@ -1,35 +1,34 @@
 # MBPP Code Reward Non-Identifiability
 
+This folder contains the MBPP code reward non-identifiability pipeline.
+
 ## Pipeline
 
 1. Build MBPP preference pairs.
-2. Extract prompt-code concat features.
-3. Train 60 reward models (5 seeds × checkpoints).
-4. Evaluate train/test accuracy.
-5. Analyse reward-model similarity.
+2. Extract concat-only prompt-code features:
+   phi(x,o) = [phi(x); phi(o)]
+3. Train linear reward models with max-margin loss.
+4. Evaluate train/test pairwise accuracy and reward gaps.
+5. Analyse good/medium/poor reward-model groups by weight cosine similarity.
 
-## Main Result
+## Running
 
-60 reward models trained.
+From this folder:
 
-Train accuracy:
-0.803 ± 0.109
+    pip install -r ../requirements.txt
+    ./run_pipeline.sh
 
-Test accuracy:
-0.510 ± 0.021
+For PBS-based execution:
 
-Poor models:
-train ≈ 0.608
+    qsub jobs/code_mbpp_full.pbs
 
-Medium models:
-train ≈ 0.847
+## Outputs
 
-Good models:
-train ≈ 0.908
+The pipeline writes generated data, extracted features, checkpoints, evaluation CSVs, and plots to:
 
-Mean cosine similarities remain low (~0.15–0.18),
-indicating different reward directions despite similar
-performance.
+- data/
+- models/
+- results/
+- plots/
 
-This supports reward non-identifiability in code
-generation tasks.
+Example outputs are included in results/ and plots/.

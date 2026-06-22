@@ -6,9 +6,9 @@ This folder contains reproducible pipelines for studying reward non-identifiabil
 
 - `gsm8k/`: math reasoning reward non-identifiability.
 - `toxicity/`: toxicity/safety reward non-identifiability.
-- `code/`: planned.
+- `code/`: code correctness reward non-identifiability.
 
-## Common pipeline
+## Common Pipeline
 
 Each dataset follows the same structure:
 
@@ -20,7 +20,7 @@ Each dataset follows the same structure:
 
 ## Setup
 
-From `non_identifiability/`:
+From this folder:
 
     pip install -r requirements.txt
 
@@ -32,6 +32,11 @@ Then enter a dataset folder and run its pipeline:
 or:
 
     cd toxicity
+    ./run_pipeline.sh
+
+or:
+
+    cd code
     ./run_pipeline.sh
 
 Large model checkpoints, extracted features, logs, and raw datasets are not intended to be committed.
